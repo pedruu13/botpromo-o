@@ -4,7 +4,7 @@
 const SHOW_DISCOUNT = true;
 const SHOW_SHOP_NAME = false;
 const SHOW_RATING = true;
-const SHOW_SALES = false;
+const SHOW_SALES = true;
 // ─────────────────────────────────────────────────────────────────────
 
 function formatPrice(value) {
@@ -33,17 +33,23 @@ export function formatOfferMessage(product) {
   }
 
   const lines = [
+    `🚨 <b>OFERTA IMPERDÍVEL!</b> 🚨`,
+    "",
     `🔥 <b>${productName}</b>`,
     "",
     priceLine,
   ];
 
-  if (SHOW_DISCOUNT && discountPct > 0) lines.push(`🏷️ Desconto: ${discountPct}%`);
+  if (SHOW_DISCOUNT && discountPct > 0) lines.push(`😱 <b>ECONOMIZE ${discountPct}% AGORA!</b>`);
+  if (SHOW_RATING && ratingStar) lines.push(`⭐ Avaliação: ${Number(ratingStar).toFixed(1)} / 5.0`);
+  if (SHOW_SALES && sales) lines.push(`🛒 Mais de ${sales} pessoas já compraram!`);
   if (SHOW_SHOP_NAME && shopName) lines.push(`🏪 Loja: ${shopName}`);
-  if (SHOW_RATING && ratingStar) lines.push(`⭐ ${Number(ratingStar).toFixed(1)}`);
-  if (SHOW_SALES && sales) lines.push(`🛒 ${sales} vendidos`);
 
-  lines.push("", `👉 <a href="${offerLink}">Ver oferta na Shopee</a>`);
+  lines.push(
+    "",
+    `⏳ <i>Promoção por tempo limitado, o preço pode subir a qualquer momento!</i>`,
+    `👉 <b><a href="${offerLink}">CLIQUE AQUI PARA GARANTIR A SUA</a></b>`
+  );
 
   return lines.join("\n");
 }
