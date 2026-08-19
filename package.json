@@ -1,0 +1,19 @@
+{
+  "name": "promo-bot",
+  "version": "1.0.0",
+  "description": "Bot que busca ofertas na Shopee (via Affiliate Open API) e posta automaticamente em grupo/canal do Telegram com link de afiliado",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "once": "node src/index.js --once",
+    "start:prod": "npx pm2 start src/index.js --name promo-bot",
+    "stop:prod": "npx pm2 stop promo-bot"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "node-fetch": "^3.3.2",
+    "pm2": "^7.0.3"
+  }
+}
