@@ -4,7 +4,7 @@
 const SHOW_DISCOUNT = true;
 const SHOW_SHOP_NAME = false;
 const SHOW_RATING = true;
-const SHOW_SALES = true;
+const SHOW_SALES = false;
 // ─────────────────────────────────────────────────────────────────────
 
 function formatPrice(value) {
