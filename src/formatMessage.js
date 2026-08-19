@@ -4,7 +4,7 @@
 const SHOW_DISCOUNT = true;
 const SHOW_SHOP_NAME = false;
 const SHOW_RATING = true;
-const SHOW_SALES = false;
+const SHOW_SALES = true;
 // ─────────────────────────────────────────────────────────────────────
 
 function formatPrice(value) {
@@ -32,8 +32,16 @@ export function formatOfferMessage(product) {
     priceLine = `💰 De <s>${formatPrice(originalPrice)}</s> por <b>${formatPrice(price)}</b>`;
   }
 
+  // Define um título chamativo dependendo se é muita promoção ou muito vendido
+  let title = `🚨 <b>OFERTA IMPERDÍVEL!</b> 🚨`;
+  if (discountPct >= 20) {
+    title = `🎯 <b>MEGA PROMOÇÃO: ${discountPct}% OFF!</b> 🎯`;
+  } else if (Number(sales) >= 500) {
+    title = `🏆 <b>UM DOS MAIS VENDIDOS NA SHOPEE!</b> 🏆`;
+  }
+
   const lines = [
-    `🚨 <b>OFERTA IMPERDÍVEL!</b> 🚨`,
+    title,
     "",
     `🔥 <b>${productName}</b>`,
     "",
