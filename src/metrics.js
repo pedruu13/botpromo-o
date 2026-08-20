@@ -42,7 +42,7 @@ export async function getAwinMetrics(startDate, endDate) {
     */
     
     // Retorno fake para teste estrutural
-    return { platform: "Awin", sales: 12, revenue: 540.00, commission: 54.00, status: "Mock" };
+    return { platform: "Awin", sales: 0, revenue: 0.00, commission: 0.00, status: "Mock" };
   } catch (error) {
     console.error("Erro ao buscar métricas da Awin:", error.message);
     return { platform: "Awin", error: error.message };
@@ -75,7 +75,7 @@ export async function getAliExpressMetrics() {
     });
     */
 
-    return { platform: "AliExpress", sales: 45, revenue: 1200.50, commission: 120.05, status: "Mock" };
+    return { platform: "AliExpress", sales: 0, revenue: 0.00, commission: 0.00, status: "Mock" };
   } catch (error) {
     return { platform: "AliExpress", error: error.message };
   }
@@ -105,7 +105,7 @@ export async function getShopeeMetrics() {
     // Lógica para somar as comissões onde order_status == 'completed'
     */
 
-    return { platform: "Shopee", sales: 25, revenue: 850.00, commission: 85.00, status: "Mock" };
+    return { platform: "Shopee", sales: 0, revenue: 0.00, commission: 0.00, status: "Mock" };
   } catch (error) {
     return { platform: "Shopee", error: error.message };
   }
