@@ -84,30 +84,36 @@ export async function getAliExpressMetrics() {
 // ==========================================
 // RASTREAMENTO DE VENDAS (SHOPEE)
 // ==========================================
+import { fetchShopeeConversions } from "./shopeeClient.js";
+
 export async function getShopeeMetrics() {
   const appId = process.env.SHOPEE_APP_ID;
   
   if (!appId) {
-    return { platform: "Shopee", sales: 0, commission: 0, status: "Credenciais não configuradas" };
+    return { platform: "Shopee", sales: 0, revenue: 0.00, commission: 0.00, status: "Credenciais não configuradas" };
   }
 
   try {
-    // GraphQL Open API da Shopee Afiliados para Order List
-    // Requer assinatura HMAC-SHA256
+    // Chama o cliente oficial da Shopee que já assina a requisição com o AppSecret
+    const conversions = await fetchShopeeConversions();
     
-    /*
-    const response = await fetch("https://open-api.affiliate.shopee.com.br/graphql", {
-      method: 'POST',
-      body: JSON.stringify({
-        query: `query { orderList(limit: 50) { nodes { commission_amount order_status } } }`
-      })
-    });
-    // Lógica para somar as comissões onde order_status == 'completed'
-    */
+    let totalCommission = 0;
+    let salesCount = conversions.length || 0;
 
-    return { platform: "Shopee", sales: 0, revenue: 0.00, commission: 0.00, status: "Mock" };
+    // Filtra vendas concluídas ou pendentes e soma a comissão
+    conversions.forEach(order => {
+      // Você pode filtrar por order.orderStatus === 'Completed' se quiser
+      totalCommission += Number(order.commission) || 0;
+    });
+
+    return { 
+      platform: "Shopee", 
+      sales: salesCount, 
+      commission: totalCommission, 
+      status: "Ativo" 
+    };
   } catch (error) {
-    return { platform: "Shopee", error: error.message };
+    return { platform: "Shopee", sales: 0, commission: 0, error: error.message };
   }
 }
 

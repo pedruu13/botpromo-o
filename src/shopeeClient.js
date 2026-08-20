@@ -71,3 +71,29 @@ export async function fetchProductOffers({ page = 0, limit = 20 } = {}) {
   const data = await shopeeGraphQL(query, { page, limit });
   return data?.productOfferV2?.nodes ?? [];
 }
+
+/**
+ * Busca o relatório de vendas (conversões) da Shopee.
+ */
+export async function fetchShopeeConversions() {
+  const query = `
+    query {
+      conversionReport(limit: 50) {
+        nodes {
+          orderStatus
+          commission
+          purchaseTime
+        }
+      }
+    }
+  `;
+
+  try {
+    const data = await shopeeGraphQL(query);
+    return data?.conversionReport?.nodes ?? [];
+  } catch (error) {
+    console.error("Erro ao buscar métricas da Shopee (GraphQL):", error.message);
+    // Retornamos null para o metrics.js saber que deu erro e exibir a mensagem
+    throw error;
+  }
+}
