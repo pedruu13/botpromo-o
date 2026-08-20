@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node src/index.js",
     "once": "node src/index.js --once",
+    "metrics": "node src/runMetrics.js",
     "start:prod": "npx pm2 start src/index.js --name promo-bot",
     "stop:prod": "npx pm2 stop promo-bot"
   },

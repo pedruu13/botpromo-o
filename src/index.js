@@ -1,6 +1,8 @@
 import "dotenv/config";
 import cron from "node-cron";
 import { fetchProductOffers } from "./shopeeClient.js";
+import { fetchAliExpressOffers } from "./aliExpressClient.js";
+import { fetchAwinOffers } from "./awinClient.js";
 import { sendPhotoMessage } from "./telegramClient.js";
 import { filterUnposted, markAsPosted } from "./store.js";
 import { formatOfferMessage } from "./formatMessage.js";
@@ -29,13 +31,27 @@ const PRODUCTS_PER_FETCH = Number(process.env.PRODUCTS_PER_FETCH || 20);
 const FETCH_INTERVAL_MINUTES = Number(process.env.FETCH_INTERVAL_MINUTES || 30);
 
 async function runCycle() {
-  console.log(`[${new Date().toISOString()}] Buscando ofertas na Shopee...`);
+  console.log(`[${new Date().toISOString()}] Buscando ofertas nas lojas (Shopee, AliExpress, Awin)...`);
 
   let offers = [];
   try {
-    offers = await fetchProductOffers({ limit: PRODUCTS_PER_FETCH });
+    const [shopeeResult, aliResult, awinResult] = await Promise.allSettled([
+      fetchProductOffers({ limit: PRODUCTS_PER_FETCH }),
+      fetchAliExpressOffers({ limit: PRODUCTS_PER_FETCH }),
+      fetchAwinOffers({ limit: PRODUCTS_PER_FETCH }),
+    ]);
+
+    const shopeeOffers = shopeeResult.status === "fulfilled" ? shopeeResult.value : [];
+    const aliOffers = aliResult.status === "fulfilled" ? aliResult.value : [];
+    const awinOffers = awinResult.status === "fulfilled" ? awinResult.value : [];
+
+    if (shopeeResult.status === "rejected") console.error("Falha Shopee:", shopeeResult.reason);
+    if (aliResult.status === "rejected") console.error("Falha AliExpress:", aliResult.reason);
+    if (awinResult.status === "rejected") console.error("Falha Awin:", awinResult.reason);
+
+    offers = [...shopeeOffers, ...aliOffers, ...awinOffers];
   } catch (err) {
-    console.error("Falha ao buscar ofertas:", err.message);
+    console.error("Erro geral na busca de ofertas:", err.message);
     return;
   }
 

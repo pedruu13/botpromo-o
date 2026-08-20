@@ -3,7 +3,7 @@
 // que vai pro canal. Não precisa mexer em mais nada abaixo.
 const SHOW_DISCOUNT = true;
 const SHOW_SHOP_NAME = false;
-const SHOW_RATING = true;
+const SHOW_RATING = false; // Desligado a pedido
 const SHOW_SALES = false;
 // ─────────────────────────────────────────────────────────────────────
 
@@ -26,18 +26,18 @@ export function formatOfferMessage(product) {
 
   const discountPct = Math.round(Number(priceDiscountRate || 0));
 
-  let priceLine = `💰 Por: <b>${formatPrice(price)}</b>`;
+  let priceLine = `💰 Por apenas: <b>${formatPrice(price)}</b>`;
   if (discountPct > 0) {
     const originalPrice = price / (1 - (discountPct / 100));
-    priceLine = `💰 De <s>${formatPrice(originalPrice)}</s> por <b>${formatPrice(price)}</b>`;
+    priceLine = `❌ De <s>${formatPrice(originalPrice)}</s>\n✅ Por apenas: <b>${formatPrice(price)}</b>`;
   }
 
   // Define um título chamativo dependendo se é muita promoção ou muito vendido
-  let title = `🚨 <b>OFERTA IMPERDÍVEL!</b> 🚨`;
+  let title = `🚨 <b>OFERTA DISPONÍVEL!</b> 🚨`;
   if (discountPct >= 20) {
-    title = `🎯 <b>MEGA PROMOÇÃO: ${discountPct}% OFF!</b> 🎯`;
+    title = `⚡ <b>SUPER DESCONTO: ${discountPct}% OFF!</b> ⚡`;
   } else if (Number(sales) >= 500) {
-    title = `🏆 <b>UM DOS MAIS VENDIDOS NA SHOPEE!</b> 🏆`;
+    title = `🔥 <b>DESTAQUE DE VENDAS!</b> 🔥`;
   }
 
   const lines = [
@@ -48,15 +48,16 @@ export function formatOfferMessage(product) {
     priceLine,
   ];
 
-  if (SHOW_DISCOUNT && discountPct > 0) lines.push(`😱 <b>ECONOMIZE ${discountPct}% AGORA!</b>`);
+  if (SHOW_DISCOUNT && discountPct > 0) lines.push(`\n💸 <b>VOCÊ ECONOMIZA ${discountPct}% AGORA!</b>`);
   if (SHOW_RATING && ratingStar) lines.push(`⭐ Avaliação: ${Number(ratingStar).toFixed(1)} / 5.0`);
-  if (SHOW_SALES && sales) lines.push(`🛒 Mais de ${sales} pessoas já compraram!`);
+  if (SHOW_SALES && sales) lines.push(`🛒 Mais de ${sales} vendidos!`);
   if (SHOW_SHOP_NAME && shopName) lines.push(`🏪 Loja: ${shopName}`);
 
   lines.push(
     "",
-    `⏳ <i>Promoção por tempo limitado, o preço pode subir a qualquer momento!</i>`,
-    `👉 <b><a href="${offerLink}">CLIQUE AQUI PARA GARANTIR A SUA</a></b>`
+    `⏳ <i>Estoque limitado, vai esgotar muito rápido!</i>`,
+    `👇 <b>CLIQUE NO LINK ABAIXO PARA GARANTIR:</b> 👇`,
+    `🔗 <b><a href="${offerLink}">👉 PEGAR PROMOÇÃO AGORA 👈</a></b>`
   );
 
   return lines.join("\n");
