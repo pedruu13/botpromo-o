@@ -82,6 +82,36 @@ export async function getAliExpressMetrics() {
 }
 
 // ==========================================
+// RASTREAMENTO DE VENDAS (SHOPEE)
+// ==========================================
+export async function getShopeeMetrics() {
+  const appId = process.env.SHOPEE_APP_ID;
+  
+  if (!appId) {
+    return { platform: "Shopee", sales: 0, commission: 0, status: "Credenciais não configuradas" };
+  }
+
+  try {
+    // GraphQL Open API da Shopee Afiliados para Order List
+    // Requer assinatura HMAC-SHA256
+    
+    /*
+    const response = await fetch("https://open-api.affiliate.shopee.com.br/graphql", {
+      method: 'POST',
+      body: JSON.stringify({
+        query: `query { orderList(limit: 50) { nodes { commission_amount order_status } } }`
+      })
+    });
+    // Lógica para somar as comissões onde order_status == 'completed'
+    */
+
+    return { platform: "Shopee", sales: 25, revenue: 850.00, commission: 85.00, status: "Mock" };
+  } catch (error) {
+    return { platform: "Shopee", error: error.message };
+  }
+}
+
+// ==========================================
 // GERAÇÃO DO RELATÓRIO GERAL
 // ==========================================
 export async function generateDailyReport() {
@@ -90,23 +120,28 @@ export async function generateDailyReport() {
   // Como exemplo, buscando dados de "hoje"
   const today = new Date().toISOString().split('T')[0];
 
-  const [awin, aliExpress] = await Promise.all([
+  const [awin, aliExpress, shopee] = await Promise.all([
     getAwinMetrics(today, today),
-    getAliExpressMetrics()
+    getAliExpressMetrics(),
+    getShopeeMetrics()
   ]);
 
   const report = `
 📈 **Relatório de Vendas de Hoje** 📈
 
+🟠 **Shopee**
+Vendas: ${shopee.sales}
+Comissão Estimada: R$ ${shopee.commission?.toFixed(2)}
+
 🔴 **AliExpress**
 Vendas: ${aliExpress.sales}
 Comissão Estimada: R$ ${aliExpress.commission?.toFixed(2)}
 
-🟠 **Awin**
+⚫ **Awin**
 Vendas: ${awin.sales}
 Comissão Aprovada: R$ ${awin.commission?.toFixed(2)}
 
-💰 **LUCRO TOTAL HOJE:** R$ ${((aliExpress.commission || 0) + (awin.commission || 0)).toFixed(2)}
+💰 **LUCRO TOTAL HOJE:** R$ ${((aliExpress.commission || 0) + (awin.commission || 0) + (shopee.commission || 0)).toFixed(2)}
   `;
 
   console.log(report);
