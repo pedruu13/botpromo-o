@@ -27,12 +27,12 @@ export async function sendPhotoMessage({ imageUrl, caption }) {
   return data;
 }
 
-export async function sendTextMessage({ text }) {
+export async function sendTextMessage({ text, chat_id = TELEGRAM_CHAT_ID }) {
   const res = await fetch(`${BASE_URL}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      chat_id: TELEGRAM_CHAT_ID,
+      chat_id,
       text,
       parse_mode: "HTML",
       disable_web_page_preview: false,
@@ -44,4 +44,35 @@ export async function sendTextMessage({ text }) {
     throw new Error(`Erro no Telegram: ${data.description}`);
   }
   return data;
+}
+
+// Escuta os comandos (Long Polling)
+export async function startListening(onCommand) {
+  let lastUpdateId = 0;
+  console.log("🎧 Bot ouvindo comandos no Telegram...");
+
+  setInterval(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/getUpdates?offset=${lastUpdateId + 1}&timeout=10`);
+      const data = await res.json();
+      
+      if (data.ok && data.result.length > 0) {
+        for (const update of data.result) {
+          lastUpdateId = update.update_id;
+          
+          if (update.message && update.message.text) {
+            const chatId = update.message.chat.id;
+            const text = update.message.text.trim();
+            
+            // Chama a função callback se houver um comando
+            if (text.startsWith("/")) {
+              onCommand(text, chatId);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Erro no polling do Telegram:", err.message);
+    }
+  }, 2000);
 }

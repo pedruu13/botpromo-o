@@ -83,6 +83,8 @@ async function runCycle() {
   console.log("Ciclo concluído.");
 }
 
+import { generateDailyReport } from "./metrics.js";
+
 const runOnce = process.argv.includes("--once");
 
 if (runOnce) {
@@ -93,4 +95,25 @@ if (runOnce) {
   );
   runCycle(); // roda uma vez imediatamente ao subir
   cron.schedule(`*/${FETCH_INTERVAL_MINUTES} * * * *`, runCycle);
+
+  // Inicia o listener para responder comandos no Telegram
+  import("./telegramClient.js").then(({ startListening, sendTextMessage }) => {
+    startListening(async (command, chatId) => {
+      console.log(`Comando recebido: ${command} do chat ${chatId}`);
+      
+      if (command === "/relatorio") {
+        await sendTextMessage({ 
+          text: "⏳ <i>Calculando relatório de vendas nas plataformas...</i>", 
+          chat_id: chatId 
+        });
+        
+        const report = await generateDailyReport();
+        
+        await sendTextMessage({ 
+          text: report, 
+          chat_id: chatId 
+        });
+      }
+    });
+  });
 }
