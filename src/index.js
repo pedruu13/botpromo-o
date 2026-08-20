@@ -3,6 +3,7 @@ import cron from "node-cron";
 import { fetchProductOffers } from "./shopeeClient.js";
 import { fetchAliExpressOffers } from "./aliExpressClient.js";
 import { fetchAwinOffers } from "./awinClient.js";
+import { fetchMercadoLivreOffers } from "./mercadoLivreClient.js";
 import { sendPhotoMessage } from "./telegramClient.js";
 import { filterUnposted, markAsPosted } from "./store.js";
 import { formatOfferMessage } from "./formatMessage.js";
@@ -35,21 +36,24 @@ async function runCycle() {
 
   let offers = [];
   try {
-    const [shopeeResult, aliResult, awinResult] = await Promise.allSettled([
+    const [shopeeResult, aliResult, awinResult, mlResult] = await Promise.allSettled([
       fetchProductOffers({ limit: PRODUCTS_PER_FETCH }),
       fetchAliExpressOffers({ limit: PRODUCTS_PER_FETCH }),
       fetchAwinOffers({ limit: PRODUCTS_PER_FETCH }),
+      fetchMercadoLivreOffers({ limit: PRODUCTS_PER_FETCH }),
     ]);
 
     const shopeeOffers = shopeeResult.status === "fulfilled" ? shopeeResult.value : [];
     const aliOffers = aliResult.status === "fulfilled" ? aliResult.value : [];
     const awinOffers = awinResult.status === "fulfilled" ? awinResult.value : [];
+    const mlOffers = mlResult.status === "fulfilled" ? mlResult.value : [];
 
     if (shopeeResult.status === "rejected") console.error("Falha Shopee:", shopeeResult.reason);
     if (aliResult.status === "rejected") console.error("Falha AliExpress:", aliResult.reason);
     if (awinResult.status === "rejected") console.error("Falha Awin:", awinResult.reason);
+    if (mlResult.status === "rejected") console.error("Falha Mercado Livre:", mlResult.reason);
 
-    offers = [...shopeeOffers, ...aliOffers, ...awinOffers];
+    offers = [...shopeeOffers, ...aliOffers, ...awinOffers, ...mlOffers];
   } catch (err) {
     console.error("Erro geral na busca de ofertas:", err.message);
     return;
