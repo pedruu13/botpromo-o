@@ -8,33 +8,11 @@ import { sendPhotoMessage } from "./telegramClient.js";
 import { filterUnposted, markAsPosted } from "./store.js";
 import { formatOfferMessage } from "./formatMessage.js";
 
-// Palavras que fazem o produto ser descartado automaticamente (moda íntima,
-// praia, etc). Ajuste essa lista conforme for vendo o que ainda passa.
-const BLOCKED_KEYWORDS = [
-  "biquíni",
-  "biquini",
-  "lingerie",
-  "calcinha",
-  "sutiã",
-  "sutia",
-  "moda praia",
-  "fio dental",
-  "body sensual",
-  "réplica",
-  "replica",
-  "1 linha",
-  "primeira linha",
-  "fake",
-  "falso",
-  "tênis",
-  "tenis",
-  "camisa de time",
-  "perfume contratipo",
-];
+import { loadSettings, saveSettings } from "./configStore.js";
 
-function isAppropriate(product) {
+function isAppropriate(product, blockedKeywords) {
   const name = String(product.productName || "").toLowerCase();
-  return !BLOCKED_KEYWORDS.some((word) => name.includes(word));
+  return !blockedKeywords.some((word) => name.includes(word));
 }
 
 const MIN_COMMISSION_RATE = Number(process.env.MIN_COMMISSION_RATE || 0.1);
@@ -66,9 +44,11 @@ async function runCycle() {
     return;
   }
 
+  const settings = loadSettings();
+
   const goodOffers = offers
-    .filter((o) => Number(o.commissionRate || 0) >= MIN_COMMISSION_RATE)
-    .filter(isAppropriate);
+    .filter((o) => Number(o.commissionRate || 0) >= settings.minCommission)
+    .filter((o) => isAppropriate(o, settings.blockedKeywords));
 
   const newOffers = filterUnposted(goodOffers, "itemId");
 
@@ -115,16 +95,61 @@ if (runOnce) {
       const caption = message.caption || "";
       const fullText = text + caption;
 
-      // 1. Tratamento de Comandos (/relatorio)
+      // 1. Tratamento de Comandos
       if (text.startsWith("/relatorio")) {
         console.log(`Comando recebido: /relatorio do chat ${chatId}`);
         await sendTextMessage({ 
           text: "⏳ <i>Calculando relatório de vendas nas plataformas...</i>", 
           chat_id: chatId 
         });
-        
         const report = await generateDailyReport();
         await sendTextMessage({ text: report, chat_id: chatId });
+        return;
+      }
+
+      if (text.startsWith("/config")) {
+        const settings = loadSettings();
+        const msg = `⚙️ <b>Configurações Atuais:</b>\n\n` +
+                    `💰 <b>Comissão Mínima:</b> ${settings.minCommission * 100}%\n` +
+                    `🚫 <b>Palavras Bloqueadas:</b> ${settings.blockedKeywords.join(", ")}\n\n` +
+                    `<i>Comandos: /comissao [valor], /bloquear [palavra], /desbloquear [palavra]</i>`;
+        await sendTextMessage({ text: msg, chat_id: chatId });
+        return;
+      }
+
+      if (text.startsWith("/comissao ")) {
+        const value = text.replace("/comissao", "").trim();
+        const num = parseFloat(value);
+        if (!isNaN(num)) {
+          const settings = loadSettings();
+          settings.minCommission = num / 100; // transforma 5 em 0.05
+          saveSettings(settings);
+          await sendTextMessage({ text: `✅ Comissão mínima alterada para <b>${num}%</b>.`, chat_id: chatId });
+        }
+        return;
+      }
+
+      if (text.startsWith("/bloquear ")) {
+        const word = text.replace("/bloquear", "").trim().toLowerCase();
+        if (word) {
+          const settings = loadSettings();
+          if (!settings.blockedKeywords.includes(word)) {
+            settings.blockedKeywords.push(word);
+            saveSettings(settings);
+            await sendTextMessage({ text: `✅ Palavra <b>${word}</b> bloqueada! Produtos com esse nome não serão postados.`, chat_id: chatId });
+          }
+        }
+        return;
+      }
+
+      if (text.startsWith("/desbloquear ")) {
+        const word = text.replace("/desbloquear", "").trim().toLowerCase();
+        if (word) {
+          const settings = loadSettings();
+          settings.blockedKeywords = settings.blockedKeywords.filter(w => w !== word);
+          saveSettings(settings);
+          await sendTextMessage({ text: `✅ Palavra <b>${word}</b> desbloqueada!`, chat_id: chatId });
+        }
         return;
       }
 
