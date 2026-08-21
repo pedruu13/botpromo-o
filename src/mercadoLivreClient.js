@@ -76,8 +76,10 @@ export async function fetchMercadoLivreOffers({ limit = 20 } = {}) {
         shopName: "Mercado Livre",
         offerLink: affiliateLink,
         imageUrl: imageUrl,
-        // Mercado livre varia a comissão por categoria (ex: 9% a 15%), setamos um valor seguro para passar no filtro
-        commissionRate: 0.10, 
+        // O Mercado Livre não informa a comissão pela API pública.
+        // Jogamos a taxa para 100 aqui internamente apenas para garantir
+        // que ele nunca seja barrado pelo filtro MIN_COMMISSION_RATE do index.js
+        commissionRate: 100, 
       };
     });
 
