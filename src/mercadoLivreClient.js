@@ -1,22 +1,53 @@
 
 
+const { 
+  MERCADO_LIVRE_AFFILIATE_ID, 
+  MERCADO_LIVRE_CLIENT_ID, 
+  MERCADO_LIVRE_CLIENT_SECRET 
+} = process.env;
+
+let mlAccessToken = null;
+let mlTokenExpiresAt = 0;
+
+async function getMLToken() {
+  if (mlAccessToken && Date.now() < mlTokenExpiresAt) {
+    return mlAccessToken;
+  }
+  
+  const response = await fetch("https://api.mercadolibre.com/oauth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=client_credentials&client_id=${MERCADO_LIVRE_CLIENT_ID}&client_secret=${MERCADO_LIVRE_CLIENT_SECRET}`
+  });
+  
+  const data = await response.json();
+  if (data.access_token) {
+    mlAccessToken = data.access_token;
+    mlTokenExpiresAt = Date.now() + (data.expires_in * 1000) - 60000;
+    return mlAccessToken;
+  }
+  throw new Error("Falha ao obter token do Mercado Livre: " + JSON.stringify(data));
+}
+
 /**
- * Busca produtos no Mercado Livre usando a API pública.
- * Como o ML não retorna diretamente a comissão na busca, pegamos ofertas com desconto.
+ * Busca produtos no Mercado Livre usando a API.
  */
 export async function fetchMercadoLivreOffers({ limit = 20 } = {}) {
-  // Apenas a tag do afiliado é obrigatória para montar o link
-  const affiliateId = process.env.MERCADO_LIVRE_AFFILIATE_ID;
+  const affiliateId = MERCADO_LIVRE_AFFILIATE_ID;
   
-  if (!affiliateId) {
-    console.log("⚠️ MERCADO_LIVRE_AFFILIATE_ID não configurado. Pulando busca no ML...");
+  if (!affiliateId || !MERCADO_LIVRE_CLIENT_ID || !MERCADO_LIVRE_CLIENT_SECRET) {
+    console.log("⚠️ Credenciais do Mercado Livre (ID/Secret ou Affiliate) faltando. Pulando...");
     return [];
   }
 
   try {
+    const token = await getMLToken();
+
     // Busca produtos que estão com promoção/desconto do dia no Brasil (MLB)
     const url = `https://api.mercadolibre.com/sites/MLB/search?deal_of_the_day=true`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     const data = await response.json();
 
     if (!data.results) return [];
