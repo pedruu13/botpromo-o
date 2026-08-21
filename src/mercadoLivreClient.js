@@ -30,8 +30,9 @@ export async function fetchMercadoLivreOffers({ limit = 20 } = {}) {
         discountRate = ((originalPrice - salePrice) / originalPrice) * 100;
       }
 
-      // Monta o link com a tag de afiliado
-      const affiliateLink = `${item.permalink}?affiliate_id=${affiliateId}`;
+      // O Mercado Livre usa permalinks que às vezes já têm ?. Precisamos concatenar com & ou ?.
+      const separator = item.permalink.includes("?") ? "&" : "?";
+      const affiliateLink = `${item.permalink}${separator}${affiliateId}`;
 
       // Pega imagem de boa qualidade se existir, senão a thumbnail padrão
       const imageUrl = item.thumbnail.replace("-I.jpg", "-O.jpg");
