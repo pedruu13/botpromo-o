@@ -38,3 +38,8 @@ export function markAsPosted(items, idField = "itemId") {
   }
   writePostedIds(posted);
 }
+
+export function clearPosted() {
+  ensureStoreFile();
+  fs.writeFileSync(STORE_PATH, "[]");
+}

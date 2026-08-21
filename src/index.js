@@ -5,7 +5,7 @@ import { fetchAliExpressOffers } from "./aliExpressClient.js";
 import { fetchAwinOffers } from "./awinClient.js";
 import { fetchMercadoLivreOffers } from "./mercadoLivreClient.js";
 import { sendPhotoMessage } from "./telegramClient.js";
-import { filterUnposted, markAsPosted } from "./store.js";
+import { filterUnposted, markAsPosted, clearPosted } from "./store.js";
 import { formatOfferMessage } from "./formatMessage.js";
 
 import { loadSettings, saveSettings } from "./configStore.js";
@@ -20,6 +20,12 @@ const PRODUCTS_PER_FETCH = Number(process.env.PRODUCTS_PER_FETCH || 20);
 const FETCH_INTERVAL_MINUTES = Number(process.env.FETCH_INTERVAL_MINUTES || 30);
 
 async function runCycle() {
+  const settings = loadSettings();
+  if (settings.isPaused) {
+    console.log(`[${new Date().toISOString()}] Bot está pausado. Pulando ciclo...`);
+    return;
+  }
+  
   console.log(`[${new Date().toISOString()}] Buscando ofertas nas lojas (Shopee, AliExpress, Awin)...`);
 
   let offers = [];
@@ -78,16 +84,17 @@ import { generateDailyReport } from "./metrics.js";
 
 const runOnce = process.argv.includes("--once");
 
+let currentCronJob = null;
+
 if (runOnce) {
   runCycle().then(() => process.exit(0));
 } else {
-  console.log(
-    `Bot iniciado. Buscando ofertas a cada ${FETCH_INTERVAL_MINUTES} minuto(s).`
-  );
-  runCycle(); // roda uma vez imediatamente ao subir
-  cron.schedule(`*/${FETCH_INTERVAL_MINUTES} * * * *`, runCycle);
+  const initialSettings = loadSettings();
+  const freq = initialSettings.fetchInterval || FETCH_INTERVAL_MINUTES;
+  console.log(`Bot iniciado. Buscando ofertas a cada ${freq} minuto(s).`);
+  runCycle();
+  currentCronJob = cron.schedule(`*/${freq} * * * *`, runCycle);
 
-  // Inicia o listener para responder comandos no Telegram
   import("./telegramClient.js").then(({ startListening, sendTextMessage, sendPhotoMessage }) => {
     startListening(async (message) => {
       const chatId = message.chat.id;
@@ -107,13 +114,52 @@ if (runOnce) {
         return;
       }
 
-      if (text.startsWith("/config")) {
+      if (text.startsWith("/config") || text.startsWith("/status")) {
         const settings = loadSettings();
-        const msg = `⚙️ <b>Configurações Atuais:</b>\n\n` +
+        const msg = `⚙️ <b>Status & Configurações:</b>\n\n` +
+                    `⏸️ <b>Pausado:</b> ${settings.isPaused ? "SIM" : "NÃO"}\n` +
+                    `⏱️ <b>Frequência:</b> a cada ${settings.fetchInterval} min\n` +
                     `💰 <b>Comissão Mínima:</b> ${settings.minCommission * 100}%\n` +
-                    `🚫 <b>Palavras Bloqueadas:</b> ${settings.blockedKeywords.join(", ")}\n\n` +
-                    `<i>Comandos: /comissao [valor], /bloquear [palavra], /desbloquear [palavra]</i>`;
+                    `🚫 <b>Palavras Bloqueadas:</b> ${settings.blockedKeywords.length} palavras\n\n` +
+                    `<i>Comandos: /pausar, /retomar, /zerar, /frequencia [minutos], /comissao [valor], /bloquear [palavra], /desbloquear [palavra]</i>`;
         await sendTextMessage({ text: msg, chat_id: chatId });
+        return;
+      }
+      
+      if (text.startsWith("/pausar")) {
+        const settings = loadSettings();
+        settings.isPaused = true;
+        saveSettings(settings);
+        await sendTextMessage({ text: `⏸️ <b>Bot Pausado.</b>\nAs postagens automáticas foram interrompidas. Use /retomar para voltar.`, chat_id: chatId });
+        return;
+      }
+
+      if (text.startsWith("/retomar")) {
+        const settings = loadSettings();
+        settings.isPaused = false;
+        saveSettings(settings);
+        await sendTextMessage({ text: `▶️ <b>Bot Retomado.</b>\nEle voltará a postar no próximo ciclo!`, chat_id: chatId });
+        return;
+      }
+
+      if (text.startsWith("/zerar")) {
+        clearPosted();
+        await sendTextMessage({ text: `🧹 <b>Memória apagada!</b>\nO bot "esqueceu" todos os produtos que já postou e pode repeti-los a partir de agora.`, chat_id: chatId });
+        return;
+      }
+
+      if (text.startsWith("/frequencia ")) {
+        const num = parseInt(text.replace("/frequencia", "").trim(), 10);
+        if (!isNaN(num) && num > 0) {
+          const settings = loadSettings();
+          settings.fetchInterval = num;
+          saveSettings(settings);
+          
+          if (currentCronJob) currentCronJob.stop();
+          currentCronJob = cron.schedule(`*/${num} * * * *`, runCycle);
+          
+          await sendTextMessage({ text: `⏱️ Frequência alterada! Buscando ofertas a cada <b>${num} minuto(s)</b>.`, chat_id: chatId });
+        }
         return;
       }
 
@@ -136,7 +182,7 @@ if (runOnce) {
           if (!settings.blockedKeywords.includes(word)) {
             settings.blockedKeywords.push(word);
             saveSettings(settings);
-            await sendTextMessage({ text: `✅ Palavra <b>${word}</b> bloqueada! Produtos com esse nome não serão postados.`, chat_id: chatId });
+            await sendTextMessage({ text: `✅ Palavra <b>${word}</b> bloqueada!`, chat_id: chatId });
           }
         }
         return;

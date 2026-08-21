@@ -5,6 +5,8 @@ const configPath = path.resolve(process.cwd(), "data", "settings.json");
 
 const defaultSettings = {
   minCommission: 0.05,
+  isPaused: false,
+  fetchInterval: 30,
   blockedKeywords: [
     "biquíni", "biquini", "lingerie", "calcinha", "sutiã", "sutia",
     "moda praia", "fio dental", "body sensual", "réplica", "replica",
@@ -20,7 +22,8 @@ export function loadSettings() {
   }
   try {
     const raw = fs.readFileSync(configPath, "utf-8");
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return { ...defaultSettings, ...parsed };
   } catch (err) {
     console.error("Erro ao ler settings.json", err);
     return defaultSettings;
