@@ -108,22 +108,81 @@ if (runOnce) {
   cron.schedule(`*/${FETCH_INTERVAL_MINUTES} * * * *`, runCycle);
 
   // Inicia o listener para responder comandos no Telegram
-  import("./telegramClient.js").then(({ startListening, sendTextMessage }) => {
-    startListening(async (command, chatId) => {
-      console.log(`Comando recebido: ${command} do chat ${chatId}`);
-      
-      if (command === "/relatorio") {
+  import("./telegramClient.js").then(({ startListening, sendTextMessage, sendPhotoMessage }) => {
+    startListening(async (message) => {
+      const chatId = message.chat.id;
+      const text = message.text || "";
+      const caption = message.caption || "";
+      const fullText = text + caption;
+
+      // 1. Tratamento de Comandos (/relatorio)
+      if (text.startsWith("/relatorio")) {
+        console.log(`Comando recebido: /relatorio do chat ${chatId}`);
         await sendTextMessage({ 
           text: "⏳ <i>Calculando relatório de vendas nas plataformas...</i>", 
           chat_id: chatId 
         });
         
         const report = await generateDailyReport();
+        await sendTextMessage({ text: report, chat_id: chatId });
+        return;
+      }
+
+      // 2. Postagem Manual Assistida (Foto + Legenda com Link e Preço)
+      if (message.photo && caption.includes("http")) {
+        console.log(`Postagem manual recebida do chat ${chatId}`);
         
-        await sendTextMessage({ 
-          text: report, 
-          chat_id: chatId 
-        });
+        const fileId = message.photo[message.photo.length - 1].file_id;
+        
+        // Extrai o link original (Shopee, ML ou Aliexpress) usando Regex básico
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const urls = caption.match(urlRegex) || [];
+        const originalUrl = urls[0];
+
+        if (!originalUrl) return;
+
+        let finalLink = originalUrl;
+
+        // Gera o link de afiliado dependendo da loja
+        if (originalUrl.includes("shopee.com") || originalUrl.includes("shope.ee")) {
+          const { generateShopeeShortLink } = await import("./shopeeClient.js");
+          finalLink = await generateShopeeShortLink(originalUrl);
+        } else if (originalUrl.includes("mercadolivre.com")) {
+          const affId = process.env.MERCADO_LIVRE_AFFILIATE_ID || "";
+          finalLink = originalUrl.includes("?") 
+            ? `${originalUrl}&${affId}` 
+            : `${originalUrl}?${affId}`;
+        }
+
+        // Tenta achar o preço (ex: R$ 99,90 ou 99.90) na legenda para formatar
+        let priceStr = "";
+        const priceMatch = caption.match(/R\$\s*[\d,.]+/i);
+        if (priceMatch) {
+          priceStr = priceMatch[0];
+        }
+
+        // Pega o resto do texto tirando o link e o preço para ser o título
+        let title = caption.replace(originalUrl, "").replace(priceStr, "").trim();
+        // Remove quebras de linha excessivas
+        title = title.replace(/\n+/g, " ");
+
+        // Formata a mensagem no Padrão Apple do bot!
+        const finalCaption = `
+🎁 <b>Achadinho Incrível!</b>
+<i>${title}</i>
+
+${priceStr ? `🔥 <b>Apenas ${priceStr}</b>\n` : ""}
+🛒 <b>Compre aqui:</b> ${finalLink}
+        `.trim();
+
+        try {
+          // Usa um atalho: envia a foto usando o file_id do Telegram (é instantâneo)
+          await sendPhotoMessage({ imageUrl: fileId, caption: finalCaption });
+          await sendTextMessage({ text: "✅ Oferta manual formatada e postada com sucesso no canal!", chat_id: chatId });
+        } catch (err) {
+          console.error("Erro ao fazer postagem manual:", err);
+          await sendTextMessage({ text: "❌ Erro ao postar no canal: " + err.message, chat_id: chatId });
+        }
       }
     });
   });

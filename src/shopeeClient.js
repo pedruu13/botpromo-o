@@ -93,7 +93,24 @@ export async function fetchShopeeConversions() {
     return data?.conversionReport?.nodes ?? [];
   } catch (error) {
     console.error("Erro ao buscar métricas da Shopee (GraphQL):", error.message);
-    // Retornamos null para o metrics.js saber que deu erro e exibir a mensagem
     throw error;
+  }
+}
+
+export async function generateShopeeShortLink(originalUrl) {
+  const query = `
+    mutation GenerateShortLink($originUrl: String!) {
+      generateShortLink(input: {originUrl: $originUrl}) {
+        shortLink
+      }
+    }
+  `;
+
+  try {
+    const data = await shopeeGraphQL(query, { originUrl: originalUrl });
+    return data?.generateShortLink?.shortLink || originalUrl;
+  } catch (error) {
+    console.error("Erro ao gerar shortlink da Shopee:", error.message);
+    return originalUrl;
   }
 }

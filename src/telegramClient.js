@@ -46,10 +46,10 @@ export async function sendTextMessage({ text, chat_id = TELEGRAM_CHAT_ID }) {
   return data;
 }
 
-// Escuta os comandos (Long Polling)
-export async function startListening(onCommand) {
+// Escuta as mensagens (Long Polling)
+export async function startListening(onMessage) {
   let lastUpdateId = 0;
-  console.log("🎧 Bot ouvindo comandos no Telegram...");
+  console.log("🎧 Bot ouvindo mensagens no Telegram...");
 
   setInterval(async () => {
     try {
@@ -60,14 +60,8 @@ export async function startListening(onCommand) {
         for (const update of data.result) {
           lastUpdateId = update.update_id;
           
-          if (update.message && update.message.text) {
-            const chatId = update.message.chat.id;
-            const text = update.message.text.trim();
-            
-            // Chama a função callback se houver um comando
-            if (text.startsWith("/")) {
-              onCommand(text, chatId);
-            }
+          if (update.message) {
+             onMessage(update.message);
           }
         }
       }
