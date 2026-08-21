@@ -20,6 +20,16 @@ const BLOCKED_KEYWORDS = [
   "moda praia",
   "fio dental",
   "body sensual",
+  "réplica",
+  "replica",
+  "1 linha",
+  "primeira linha",
+  "fake",
+  "falso",
+  "tênis",
+  "tenis",
+  "camisa de time",
+  "perfume contratipo",
 ];
 
 function isAppropriate(product) {
