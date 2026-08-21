@@ -50,7 +50,10 @@ export async function fetchMercadoLivreOffers({ limit = 20 } = {}) {
     });
     const data = await response.json();
 
-    if (!data.results) return [];
+    if (!data.results) {
+      console.error("⚠️ O Mercado Livre bloqueou a busca ou retornou vazio! Resposta:", JSON.stringify(data));
+      return [];
+    }
 
     const products = data.results.map(item => {
       // Calcula desconto se houver preço original
