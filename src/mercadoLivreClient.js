@@ -1,4 +1,4 @@
-import fetch from "node-fetch";
+
 
 /**
  * Busca produtos no Mercado Livre usando a API pública.
