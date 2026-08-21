@@ -50,8 +50,6 @@ async function runCycle() {
     return;
   }
 
-  const settings = loadSettings();
-
   const goodOffers = offers
     .filter((o) => Number(o.commissionRate || 0) >= settings.minCommission)
     .filter((o) => isAppropriate(o, settings.blockedKeywords));
