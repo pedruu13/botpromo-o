@@ -50,7 +50,9 @@ export async function fetchMercadoLivreOffers({ limit = 20 } = {}) {
       };
     });
 
-    return products.slice(0, limit);
+    const finalList = products.slice(0, limit);
+    console.log(`✅ [Mercado Livre] ${finalList.length} ofertas capturadas com sucesso!`);
+    return finalList;
   } catch (error) {
     console.error("Erro no Mercado Livre Client:", error.message);
     return [];

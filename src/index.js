@@ -32,7 +32,7 @@ const PRODUCTS_PER_FETCH = Number(process.env.PRODUCTS_PER_FETCH || 20);
 const FETCH_INTERVAL_MINUTES = Number(process.env.FETCH_INTERVAL_MINUTES || 30);
 
 async function runCycle() {
-  console.log(`[${new Date().toISOString()}] Buscando ofertas nas lojas (Shopee, AliExpress, Awin)...`);
+  console.log(`[${new Date().toISOString()}] Buscando ofertas nas lojas (Shopee, AliExpress, Awin, Mercado Livre)...`);
 
   let offers = [];
   try {
