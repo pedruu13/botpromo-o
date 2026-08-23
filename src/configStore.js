@@ -8,11 +8,18 @@ const defaultSettings = {
   isPaused: false,
   fetchInterval: 30,
   blockedKeywords: [
-    "biqu�ni", "biquini", "lingerie", "calcinha", "suti�", "sutia",
-    "moda praia", "fio dental", "body sensual", "r�plica", "replica",
-    "1 linha", "primeira linha", "fake", "falso", "t�nis", "tenis",
+    "biquíni", "biquini", "lingerie", "calcinha", "sutiã", "sutia",
+    "moda praia", "fio dental", "body sensual", "réplica", "replica",
+    "1 linha", "primeira linha", "fake", "falso", "tênis", "tenis",
     "camisa de time", "perfume contratipo"
-  ]
+  ],
+  activeCategories: [],
+  categories: {
+    "eletronicos": ["celular", "smartphone", "notebook", "pc", "fone", "smartwatch", "tv", "monitor", "teclado", "mouse", "gamer"],
+    "casa": ["travesseiro", "sofá", "sofa", "panela", "cama", "mesa", "toalha", "liquidificador", "airfryer", "fritadeira", "aspirador"],
+    "moda": ["camisa", "calça", "calca", "vestido", "sapato", "tênis", "tenis", "jaqueta", "moletom", "bolsa", "relógio"],
+    "beleza": ["perfume", "maquiagem", "creme", "shampoo", "condicionador", "sabonete", "protetor", "batom", "secador", "chapinha"]
+  }
 };
 
 export function loadSettings() {

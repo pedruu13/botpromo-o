@@ -10,9 +10,21 @@ import { formatOfferMessage } from "./formatMessage.js";
 
 import { loadSettings, saveSettings } from "./configStore.js";
 
-function isAppropriate(product, blockedKeywords) {
+function isAppropriate(product, blockedKeywords, activeCategories = [], categories = {}) {
   const name = String(product.productName || "").toLowerCase();
-  return !blockedKeywords.some((word) => name.includes(word));
+  
+  if (blockedKeywords.some((word) => name.includes(word))) {
+    return false;
+  }
+
+  if (activeCategories.length > 0) {
+    const activeKeywords = activeCategories.flatMap(cat => categories[cat] || []);
+    if (!activeKeywords.some(word => name.includes(word))) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 const MIN_COMMISSION_RATE = Number(process.env.MIN_COMMISSION_RATE || 0.1);
@@ -52,7 +64,7 @@ async function runCycle() {
 
   const goodOffers = offers
     .filter((o) => Number(o.commissionRate || 0) >= settings.minCommission)
-    .filter((o) => isAppropriate(o, settings.blockedKeywords));
+    .filter((o) => isAppropriate(o, settings.blockedKeywords, settings.activeCategories, settings.categories));
 
   const newOffers = filterUnposted(goodOffers, "itemId");
 
@@ -118,8 +130,9 @@ if (runOnce) {
                     `⏸️ <b>Pausado:</b> ${settings.isPaused ? "SIM" : "NÃO"}\n` +
                     `⏱️ <b>Frequência:</b> a cada ${settings.fetchInterval} min\n` +
                     `💰 <b>Comissão Mínima:</b> ${settings.minCommission * 100}%\n` +
-                    `🚫 <b>Palavras Bloqueadas:</b> ${settings.blockedKeywords.length} palavras\n\n` +
-                    `<i>Comandos: /pausar, /retomar, /zerar, /frequencia [minutos], /comissao [valor], /bloquear [palavra], /desbloquear [palavra]</i>`;
+                    `🚫 <b>Palavras Bloqueadas:</b> ${settings.blockedKeywords.length} palavras\n` +
+                    `🗂️ <b>Categorias Ativas:</b> ${settings.activeCategories.length === 0 ? "Todas (Nenhum filtro)" : settings.activeCategories.join(", ")}\n\n` +
+                    `<i>Comandos: /pausar, /retomar, /zerar, /frequencia [minutos], /comissao [valor], /bloquear [palavra], /desbloquear [palavra], /categorias, /ativar [cat], /desativar [cat]</i>`;
         await sendTextMessage({ text: msg, chat_id: chatId });
         return;
       }
@@ -193,6 +206,54 @@ if (runOnce) {
           settings.blockedKeywords = settings.blockedKeywords.filter(w => w !== word);
           saveSettings(settings);
           await sendTextMessage({ text: `✅ Palavra <b>${word}</b> desbloqueada!`, chat_id: chatId });
+        }
+        return;
+      }
+
+      if (text.startsWith("/categorias")) {
+        const settings = loadSettings();
+        const allCats = Object.keys(settings.categories || {});
+        let msg = `🗂️ <b>Filtro de Categorias</b>\n\n`;
+        
+        if (allCats.length === 0) {
+           msg += "Nenhuma categoria configurada no sistema.";
+        } else {
+           allCats.forEach(cat => {
+             const isOn = settings.activeCategories.includes(cat);
+             msg += `${isOn ? "🟢" : "🔴"} <b>${cat}</b>\n`;
+           });
+           if (settings.activeCategories.length === 0) {
+             msg += `\n⚠️ <i>Todas desativadas = Postando de tudo.</i>`;
+           }
+        }
+        await sendTextMessage({ text: msg, chat_id: chatId });
+        return;
+      }
+
+      if (text.startsWith("/ativar ")) {
+        const cat = text.replace("/ativar", "").trim().toLowerCase();
+        const settings = loadSettings();
+        if (settings.categories && settings.categories[cat]) {
+          if (!settings.activeCategories.includes(cat)) {
+            settings.activeCategories.push(cat);
+            saveSettings(settings);
+          }
+          await sendTextMessage({ text: `🟢 Categoria <b>${cat}</b> ativada!`, chat_id: chatId });
+        } else {
+          await sendTextMessage({ text: `❌ Categoria <b>${cat}</b> não encontrada. Use /categorias para ver a lista.`, chat_id: chatId });
+        }
+        return;
+      }
+
+      if (text.startsWith("/desativar ")) {
+        const cat = text.replace("/desativar", "").trim().toLowerCase();
+        const settings = loadSettings();
+        if (settings.activeCategories.includes(cat)) {
+          settings.activeCategories = settings.activeCategories.filter(c => c !== cat);
+          saveSettings(settings);
+          await sendTextMessage({ text: `🔴 Categoria <b>${cat}</b> desativada!`, chat_id: chatId });
+        } else {
+          await sendTextMessage({ text: `❌ A categoria <b>${cat}</b> já está desativada ou não existe.`, chat_id: chatId });
         }
         return;
       }
