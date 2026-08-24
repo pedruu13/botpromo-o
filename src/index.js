@@ -91,7 +91,7 @@ async function runCycle() {
 
   for (const product of newOffers) {
     try {
-      const caption = formatOfferMessage(product);
+      const caption = formatOfferMessage(product, settings.globalCoupon);
       await sendPhotoMessage({ imageUrl: product.imageUrl, caption });
       markAsPosted([product], "itemId");
       // pequeno intervalo entre posts pra não tomar rate-limit do Telegram
@@ -147,9 +147,10 @@ if (runOnce) {
                     `📉 <b>Desconto Mínimo:</b> ${settings.minDiscount}%\n` +
                     `⭐ <b>Avaliação Mínima:</b> ${settings.minRating}\n` +
                     `🛒 <b>Vendas Mínimas:</b> ${settings.minSales}\n` +
+                    `🎟️ <b>Cupom Global:</b> ${settings.globalCoupon ? settings.globalCoupon : "Nenhum (Usando alerta genérico)"}\n` +
                     `🚫 <b>Palavras Bloqueadas:</b> ${settings.blockedKeywords.length} palavras\n` +
                     `🗂️ <b>Categorias Ativas:</b> ${settings.activeCategories.length === 0 ? "Todas (Nenhum filtro)" : settings.activeCategories.join(", ")}\n\n` +
-                    `<i>Comandos: /pausar, /retomar, /zerar, /frequencia [min], /comissao [valor], /descontomin [valor], /avalmin [valor], /vendasmin [valor], /bloquear [palavra], /desbloquear [palavra], /categorias, /ativar [cat], /desativar [cat]</i>`;
+                    `<i>Comandos: /pausar, /retomar, /zerar, /frequencia [min], /comissao [valor], /descontomin [valor], /avalmin [valor], /vendasmin [valor], /cupom [codigo] (ou /cupom off), /bloquear [palavra], /desbloquear [palavra], /categorias, /ativar [cat], /desativar [cat]</i>`;
         await sendTextMessage({ text: msg, chat_id: chatId });
         return;
       }
@@ -235,6 +236,22 @@ if (runOnce) {
           settings.minSales = num;
           saveSettings(settings);
           await sendTextMessage({ text: `🛒 Quantidade de vendas mínima alterada para <b>${num}</b>.`, chat_id: chatId });
+        }
+        return;
+      }
+
+      if (text.startsWith("/cupom ")) {
+        const value = text.replace("/cupom", "").trim();
+        const settings = loadSettings();
+        
+        if (value.toLowerCase() === "off") {
+          settings.globalCoupon = "";
+          saveSettings(settings);
+          await sendTextMessage({ text: `🎟️ Cupom global <b>removido</b>. O bot usará o alerta genérico de frete grátis.`, chat_id: chatId });
+        } else {
+          settings.globalCoupon = value;
+          saveSettings(settings);
+          await sendTextMessage({ text: `🎟️ Cupom global alterado para: <code>${value}</code>. Ele aparecerá em todas as postagens!`, chat_id: chatId });
         }
         return;
       }

@@ -13,7 +13,7 @@ function formatPrice(value) {
   return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export function formatOfferMessage(product) {
+export function formatOfferMessage(product, globalCoupon = "") {
   const {
     productName,
     price,
@@ -52,6 +52,14 @@ export function formatOfferMessage(product) {
   if (SHOW_RATING && ratingStar) lines.push(`⭐ Avaliação: ${Number(ratingStar).toFixed(1)} / 5.0`);
   if (SHOW_SALES && sales) lines.push(`🛒 Mais de ${sales} vendidos!`);
   if (SHOW_SHOP_NAME && shopName) lines.push(`🏪 Loja: ${shopName}`);
+
+  // Regra de Cupom
+  lines.push("");
+  if (globalCoupon) {
+    lines.push(`🎟️ <b>Use o cupom:</b> <code>${globalCoupon}</code>`);
+  } else if (shopName === "Shopee" || offerLink.includes("shopee")) {
+    lines.push(`🎫 <b>RESGATE AGORA:</b> Cupons de Frete Grátis e Descontos no app!`);
+  }
 
   lines.push(
     "",

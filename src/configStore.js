@@ -8,6 +8,7 @@ const defaultSettings = {
   minSales: 50,
   minRating: 4.5,
   minDiscount: 10,
+  globalCoupon: "",
   isPaused: false,
   fetchInterval: 30,
   blockedKeywords: [
