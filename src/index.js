@@ -67,7 +67,18 @@ async function runCycle() {
 
   const goodOffers = offers
     .filter((o) => Number(o.commissionRate || 0) >= settings.minCommission)
-    .filter((o) => isAppropriate(o, settings.blockedKeywords, settings.activeCategories, settings.categories));
+    .filter((o) => isAppropriate(o, settings.blockedKeywords, settings.activeCategories, settings.categories))
+    .filter((o) => {
+      // nova regra de qualidade
+      if (settings.minDiscount > 0) {
+        if ((o.priceDiscountRate || 0) < settings.minDiscount) return false;
+      }
+      if (o.shopName === "Shopee" || o.sales !== undefined) {
+         if (settings.minSales > 0 && (o.sales || 0) < settings.minSales) return false;
+         if (settings.minRating > 0 && (o.ratingStar || 0) < settings.minRating) return false;
+      }
+      return true;
+    });
 
   const newOffers = filterUnposted(goodOffers, "itemId");
 
@@ -133,9 +144,12 @@ if (runOnce) {
                     `⏸️ <b>Pausado:</b> ${settings.isPaused ? "SIM" : "NÃO"}\n` +
                     `⏱️ <b>Frequência:</b> a cada ${settings.fetchInterval} min\n` +
                     `💰 <b>Comissão Mínima:</b> ${settings.minCommission * 100}%\n` +
+                    `📉 <b>Desconto Mínimo:</b> ${settings.minDiscount}%\n` +
+                    `⭐ <b>Avaliação Mínima:</b> ${settings.minRating}\n` +
+                    `🛒 <b>Vendas Mínimas:</b> ${settings.minSales}\n` +
                     `🚫 <b>Palavras Bloqueadas:</b> ${settings.blockedKeywords.length} palavras\n` +
                     `🗂️ <b>Categorias Ativas:</b> ${settings.activeCategories.length === 0 ? "Todas (Nenhum filtro)" : settings.activeCategories.join(", ")}\n\n` +
-                    `<i>Comandos: /pausar, /retomar, /zerar, /frequencia [minutos], /comissao [valor], /bloquear [palavra], /desbloquear [palavra], /categorias, /ativar [cat], /desativar [cat]</i>`;
+                    `<i>Comandos: /pausar, /retomar, /zerar, /frequencia [min], /comissao [valor], /descontomin [valor], /avalmin [valor], /vendasmin [valor], /bloquear [palavra], /desbloquear [palavra], /categorias, /ativar [cat], /desativar [cat]</i>`;
         await sendTextMessage({ text: msg, chat_id: chatId });
         return;
       }
@@ -185,6 +199,42 @@ if (runOnce) {
           settings.minCommission = num / 100; // transforma 5 em 0.05
           saveSettings(settings);
           await sendTextMessage({ text: `✅ Comissão mínima alterada para <b>${num}%</b>.`, chat_id: chatId });
+        }
+        return;
+      }
+
+      if (text.startsWith("/descontomin ")) {
+        const value = text.replace("/descontomin", "").trim();
+        const num = parseFloat(value);
+        if (!isNaN(num)) {
+          const settings = loadSettings();
+          settings.minDiscount = num;
+          saveSettings(settings);
+          await sendTextMessage({ text: `📉 Desconto mínimo alterado para <b>${num}%</b>.`, chat_id: chatId });
+        }
+        return;
+      }
+
+      if (text.startsWith("/avalmin ")) {
+        const value = text.replace("/avalmin", "").trim();
+        const num = parseFloat(value);
+        if (!isNaN(num)) {
+          const settings = loadSettings();
+          settings.minRating = num;
+          saveSettings(settings);
+          await sendTextMessage({ text: `⭐ Avaliação mínima alterada para <b>${num}</b>.`, chat_id: chatId });
+        }
+        return;
+      }
+
+      if (text.startsWith("/vendasmin ")) {
+        const value = text.replace("/vendasmin", "").trim();
+        const num = parseInt(value, 10);
+        if (!isNaN(num)) {
+          const settings = loadSettings();
+          settings.minSales = num;
+          saveSettings(settings);
+          await sendTextMessage({ text: `🛒 Quantidade de vendas mínima alterada para <b>${num}</b>.`, chat_id: chatId });
         }
         return;
       }

@@ -5,6 +5,9 @@ const configPath = path.resolve(process.cwd(), "data", "settings.json");
 
 const defaultSettings = {
   minCommission: 0.05,
+  minSales: 50,
+  minRating: 4.5,
+  minDiscount: 10,
   isPaused: false,
   fetchInterval: 30,
   blockedKeywords: [
