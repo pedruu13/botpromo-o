@@ -11,6 +11,7 @@ const defaultSettings = {
   globalCoupon: "",
   isPaused: false,
   fetchInterval: 30,
+  cloneChannels: ["EconoMister"],
   blockedKeywords: [
     "biquíni", "biquini", "lingerie", "calcinha", "sutiã", "sutia",
     "moda praia", "fio dental", "body sensual", "réplica", "replica",

@@ -148,9 +148,10 @@ if (runOnce) {
                     `⭐ <b>Avaliação Mínima:</b> ${settings.minRating}\n` +
                     `🛒 <b>Vendas Mínimas:</b> ${settings.minSales}\n` +
                     `🎟️ <b>Cupom Global:</b> ${settings.globalCoupon ? settings.globalCoupon : "Nenhum (Usando alerta genérico)"}\n` +
+                    `📡 <b>Canais Alvo (ML):</b> ${(settings.cloneChannels || []).length > 0 ? (settings.cloneChannels || []).join(", ") : "Nenhum"}\n` +
                     `🚫 <b>Palavras Bloqueadas:</b> ${settings.blockedKeywords.length} palavras\n` +
                     `🗂️ <b>Categorias Ativas:</b> ${settings.activeCategories.length === 0 ? "Todas (Nenhum filtro)" : settings.activeCategories.join(", ")}\n\n` +
-                    `<i>Comandos: /pausar, /retomar, /zerar, /frequencia [min], /comissao [valor], /descontomin [valor], /avalmin [valor], /vendasmin [valor], /cupom [codigo] (ou /cupom off), /bloquear [palavra], /desbloquear [palavra], /categorias, /ativar [cat], /desativar [cat]</i>`;
+                    `<i>Comandos: /pausar, /retomar, /zerar, /frequencia [min], /comissao [valor], /descontomin [valor], /avalmin [valor], /vendasmin [valor], /cupom [codigo], /bloquear [palavra], /desbloquear [palavra], /categorias, /ativar [cat], /desativar [cat], /addcanal [canal], /rmcanal [canal]</i>`;
         await sendTextMessage({ text: msg, chat_id: chatId });
         return;
       }
@@ -324,6 +325,35 @@ if (runOnce) {
           await sendTextMessage({ text: `🔴 Categoria <b>${cat}</b> desativada!`, chat_id: chatId });
         } else {
           await sendTextMessage({ text: `❌ A categoria <b>${cat}</b> já está desativada ou não existe.`, chat_id: chatId });
+        }
+        return;
+      }
+
+      if (text.startsWith("/addcanal ")) {
+        const channel = text.replace("/addcanal", "").trim().replace("@", "");
+        if (channel) {
+          const settings = loadSettings();
+          if (!settings.cloneChannels) settings.cloneChannels = [];
+          if (!settings.cloneChannels.includes(channel)) {
+            settings.cloneChannels.push(channel);
+            saveSettings(settings);
+            await sendTextMessage({ text: `📡 Canal alvo <b>@${channel}</b> adicionado para clonagem!`, chat_id: chatId });
+          } else {
+             await sendTextMessage({ text: `⚠️ Esse canal já está na lista.`, chat_id: chatId });
+          }
+        }
+        return;
+      }
+
+      if (text.startsWith("/rmcanal ")) {
+        const channel = text.replace("/rmcanal", "").trim().replace("@", "");
+        if (channel) {
+          const settings = loadSettings();
+          if (settings.cloneChannels && settings.cloneChannels.includes(channel)) {
+            settings.cloneChannels = settings.cloneChannels.filter(c => c !== channel);
+            saveSettings(settings);
+            await sendTextMessage({ text: `🚫 Canal alvo <b>@${channel}</b> removido da clonagem!`, chat_id: chatId });
+          }
         }
         return;
       }
