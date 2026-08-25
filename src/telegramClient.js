@@ -1,5 +1,3 @@
-import fetch from "node-fetch";
-
 const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } = process.env;
 
 const BASE_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
@@ -69,4 +67,26 @@ export async function startListening(onMessage) {
       console.error("Erro no polling do Telegram:", err.message);
     }
   }, 2000);
+}
+
+export async function sendPhotoBuffer({ buffer, caption, chat_id = TELEGRAM_CHAT_ID }) {
+  if (!TELEGRAM_BOT_TOKEN || !chat_id) return;
+  try {
+    const formData = new FormData();
+    formData.append("chat_id", chat_id);
+    formData.append("photo", new Blob([buffer]), "qrcode.png");
+    if (caption) {
+      formData.append("caption", caption);
+      formData.append("parse_mode", "HTML");
+    }
+
+    const response = await fetch(`${BASE_URL}/sendPhoto`, {
+      method: "POST",
+      body: formData
+    });
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Erro ao enviar QR Code:", error.message);
+  }
 }

@@ -7,6 +7,7 @@ import { fetchMercadoLivreOffers } from "./mercadoLivreClient.js";
 import { sendPhotoMessage } from "./telegramClient.js";
 import { filterUnposted, markAsPosted, clearPosted } from "./store.js";
 import { formatOfferMessage } from "./formatMessage.js";
+import { startWhatsApp, sendWhatsAppPhotoMessage } from "./whatsappClient.js";
 
 import { loadSettings, saveSettings } from "./configStore.js";
 
@@ -93,6 +94,13 @@ async function runCycle() {
     try {
       const caption = formatOfferMessage(product, settings.globalCoupon);
       await sendPhotoMessage({ imageUrl: product.imageUrl, caption });
+      
+      if (settings.whatsappGroups && settings.whatsappGroups.length > 0) {
+        for (const jid of settings.whatsappGroups) {
+           await sendWhatsAppPhotoMessage(jid, product.imageUrl, caption);
+        }
+      }
+      
       markAsPosted([product], "itemId");
       // pequeno intervalo entre posts pra não tomar rate-limit do Telegram
       await new Promise((r) => setTimeout(r, 2000));
@@ -119,7 +127,32 @@ if (runOnce) {
   runCycle();
   currentCronJob = cron.schedule(`*/${freq} * * * *`, runCycle);
 
-  import("./telegramClient.js").then(({ startListening, sendTextMessage, sendPhotoMessage }) => {
+  import("./telegramClient.js").then(({ startListening, sendTextMessage, sendPhotoMessage, sendPhotoBuffer }) => {
+    // Inicia o WhatsApp em paralelo
+    startWhatsApp(
+      async (qrBuffer) => {
+        const chatId = process.env.TELEGRAM_CHAT_ID;
+        await sendPhotoBuffer({
+          buffer: qrBuffer,
+          caption: "📲 <b>Conexão WhatsApp (Baileys)</b>\nLeia este QR Code no seu aparelho para conectar o robô!",
+          chat_id: chatId
+        });
+      },
+      async (msgInfo) => {
+        // Escuta mensagens DENTRO do WhatsApp
+        if (msgInfo.text.trim() === "/whatsappgrupo") {
+          const settings = loadSettings();
+          if (!settings.whatsappGroups) settings.whatsappGroups = [];
+          if (!settings.whatsappGroups.includes(msgInfo.from)) {
+            settings.whatsappGroups.push(msgInfo.from);
+            saveSettings(settings);
+            const { sendWhatsAppTextMessage } = await import("./whatsappClient.js");
+            await sendWhatsAppTextMessage(msgInfo.from, "✅ Grupo vinculado com sucesso! As próximas promoções serão enviadas aqui.");
+          }
+        }
+      }
+    );
+
     startListening(async (message) => {
       const chatId = message.chat.id;
       const text = message.text || "";
