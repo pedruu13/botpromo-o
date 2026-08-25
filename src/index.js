@@ -131,7 +131,12 @@ if (runOnce) {
     // Inicia o WhatsApp em paralelo
     startWhatsApp(
       async (qrBuffer) => {
-        const chatId = process.env.TELEGRAM_CHAT_ID;
+        const settings = loadSettings();
+        const chatId = settings.adminChatId;
+        if (!chatId) {
+          console.log("QR Code gerado, mas nenhum Admin Chat ID configurado. Mande /config no grupo de relatórios primeiro.");
+          return;
+        }
         await sendPhotoBuffer({
           buffer: qrBuffer,
           caption: "📲 <b>Conexão WhatsApp (Baileys)</b>\nLeia este QR Code no seu aparelho para conectar o robô!",
@@ -158,6 +163,15 @@ if (runOnce) {
       const text = message.text || "";
       const caption = message.caption || "";
       const fullText = text + caption;
+
+      // Salva o chatId como admin sempre que mandar um comando
+      if (text.startsWith("/")) {
+        const settings = loadSettings();
+        if (settings.adminChatId !== chatId) {
+           settings.adminChatId = chatId;
+           saveSettings(settings);
+        }
+      }
 
       // 1. Tratamento de Comandos
       if (text.startsWith("/relatorio")) {
