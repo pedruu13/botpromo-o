@@ -12,6 +12,7 @@
     "stop:prod": "npx pm2 stop promo-bot"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
     "dotenv": "^16.4.5",
     "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2",
