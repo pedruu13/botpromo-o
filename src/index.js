@@ -130,19 +130,6 @@ if (runOnce) {
   import("./telegramClient.js").then(({ startListening, sendTextMessage, sendPhotoMessage, sendPhotoBuffer }) => {
     // Inicia o WhatsApp em paralelo
     startWhatsApp(
-      async (qrBuffer) => {
-        const settings = loadSettings();
-        const chatId = settings.adminChatId;
-        if (!chatId) {
-          console.log("QR Code gerado, mas nenhum Admin Chat ID configurado. Mande /config no grupo de relatórios primeiro.");
-          return;
-        }
-        await sendPhotoBuffer({
-          buffer: qrBuffer,
-          caption: "📲 <b>Conexão WhatsApp (Baileys)</b>\nLeia este QR Code no seu aparelho para conectar o robô!",
-          chat_id: chatId
-        });
-      },
       async (msgInfo) => {
         // Escuta mensagens DENTRO do WhatsApp
         if (msgInfo.text.trim() === "/whatsappgrupo") {
@@ -174,6 +161,22 @@ if (runOnce) {
       }
 
       // 1. Tratamento de Comandos
+      if (text.startsWith("/wppqr")) {
+        console.log(`Comando recebido: /wppqr do chat ${chatId}`);
+        const { getCurrentQr } = await import("./whatsappClient.js");
+        const currentQrBuffer = getCurrentQr();
+        if (currentQrBuffer) {
+           await sendPhotoBuffer({
+             buffer: currentQrBuffer,
+             caption: "📲 Aqui está o QR Code fresquinho do WhatsApp. Escaneie rápido antes que expire!",
+             chat_id: chatId
+           });
+        } else {
+           await sendTextMessage({ text: "⚠️ O WhatsApp já está conectado, ou o QR code ainda não foi gerado no servidor. Aguarde uns segundos e tente de novo se estiver desconectado.", chat_id: chatId });
+        }
+        return;
+      }
+
       if (text.startsWith("/relatorio")) {
         console.log(`Comando recebido: /relatorio do chat ${chatId}`);
         await sendTextMessage({ 

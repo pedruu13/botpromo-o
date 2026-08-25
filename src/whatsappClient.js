@@ -1,15 +1,17 @@
-import { makeWASocket, useMultiFileAuthState, DisconnectReason } from "@whiskeysockets/baileys";
+﻿import { makeWASocket, useMultiFileAuthState, DisconnectReason } from "@whiskeysockets/baileys";
 import QRCode from "qrcode";
 import pino from "pino";
 import fs from "fs";
 import path from "path";
 
 let sock;
-let telegramCallback = null;
+let currentQrBuffer = null;
 
-export async function startWhatsApp(onQrCode, onMessage) {
-  telegramCallback = onQrCode;
-  
+export function getCurrentQr() {
+  return currentQrBuffer;
+}
+
+export async function startWhatsApp(onMessage) {
   const authDir = path.resolve(process.cwd(), "data", "whatsapp_auth");
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
@@ -24,11 +26,9 @@ export async function startWhatsApp(onQrCode, onMessage) {
   sock.ev.on("connection.update", async (update) => {
     const { connection, lastDisconnect, qr } = update;
     
-    if (qr && telegramCallback) {
-      console.log("Gerando QR Code do WhatsApp...");
+    if (qr) {
       try {
-        const qrBuffer = await QRCode.toBuffer(qr);
-        telegramCallback(qrBuffer);
+        currentQrBuffer = await QRCode.toBuffer(qr);
       } catch (err) {
         console.error("Erro ao gerar imagem do QR:", err);
       }
@@ -36,15 +36,17 @@ export async function startWhatsApp(onQrCode, onMessage) {
 
     if (connection === "close") {
       const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      console.log("Conex�o do WhatsApp fechada. Reconectando:", shouldReconnect);
+      console.log("Conexão do WhatsApp fechada. Reconectando:", shouldReconnect);
       if (shouldReconnect) {
-        startWhatsApp(onQrCode, onMessage);
+        startWhatsApp(onMessage);
       } else {
         console.log("WhatsApp deslogado. Apague a pasta data/whatsapp_auth para gerar novo QR.");
         fs.rmSync(authDir, { recursive: true, force: true });
+        currentQrBuffer = null;
       }
     } else if (connection === "open") {
-      console.log("? WhatsApp conectado e pronto para uso!");
+      console.log("✅ WhatsApp conectado e pronto para uso!");
+      currentQrBuffer = null;
     }
   });
 
