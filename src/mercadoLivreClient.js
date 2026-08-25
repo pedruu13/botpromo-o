@@ -39,7 +39,7 @@ export async function fetchMercadoLivreOffers({ limit = 20 } = {}) {
   const affiliateId = process.env.MERCADO_LIVRE_AFFILIATE_ID || "";
   
   // Canal público alvo para espelhar as ofertas do ML (pode alterar no futuro se precisar)
-  const channelToClone = "promocoeseofertas"; 
+  const channelToClone = "EconoMister"; 
   
   if (!affiliateId) {
     console.log("⚠️ Credencial MERCADO_LIVRE_AFFILIATE_ID faltando. Pulando...");
