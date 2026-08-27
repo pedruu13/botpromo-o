@@ -9,6 +9,8 @@ const defaultSettings = {
   minRating: 4.5,
   minDiscount: 10,
   globalCoupon: "",
+  shopeeCoupon: "",
+  mlCoupon: "",
   isPaused: false,
   fetchInterval: 30,
   cloneChannels: ["EconoMister"],

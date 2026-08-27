@@ -1,5 +1,7 @@
 import crypto from "crypto";
 import fetch from "node-fetch";
+import * as cheerio from "cheerio";
+import { loadSettings } from "./configStore.js";
 
 const { SHOPEE_APP_ID, SHOPEE_APP_SECRET, SHOPEE_API_URL } = process.env;
 
@@ -42,8 +44,39 @@ async function shopeeGraphQL(query, variables = {}) {
   return data.data;
 }
 
-import * as cheerio from "cheerio";
-import { loadSettings } from "./configStore.js";
+function extractPriceAndDiscount(text) {
+  const matches = [...text.matchAll(/R\$\s*([\d,.]+)/ig)];
+  const prices = matches.map(m => {
+    const raw = m[1];
+    let clean = raw;
+    if (raw.includes(",") && raw.includes(".")) {
+      clean = raw.replace(/\./g, "").replace(",", ".");
+    } else if (raw.includes(",")) {
+      clean = raw.replace(",", ".");
+    }
+    return parseFloat(clean);
+  }).filter(p => !isNaN(p) && p > 0);
+
+  let finalPrice = 0;
+  let discountPct = 0;
+
+  if (prices.length >= 2) {
+    const price1 = prices[0];
+    const price2 = prices[1];
+    if (price1 > price2) {
+      finalPrice = price2;
+      discountPct = Math.round(((price1 - price2) / price1) * 100);
+    } else {
+      finalPrice = price1;
+      discountPct = 0;
+    }
+  } else if (prices.length === 1) {
+    finalPrice = prices[0];
+    discountPct = 0;
+  }
+
+  return { price: finalPrice, discountPct };
+}
 
 /**
  * Busca ofertas da Shopee usando a técnica de Espelho (Clonagem de Canais Públicos do Telegram).
@@ -79,11 +112,7 @@ export async function fetchProductOffers({ limit = 20 } = {}) {
         const shopeeLinks = links.filter(l => l && (l.includes("shopee.com") || l.includes("shope.ee")));
         
         if (shopeeLinks.length > 0 && photoUrl) {
-           let price = 0;
-           const priceMatch = text.match(/R\$\s*([\d,.]+)/i);
-           if (priceMatch) {
-              price = parseFloat(priceMatch[1].replace(".", "").replace(",", "."));
-           }
+           const { price, discountPct } = extractPriceAndDiscount(text);
            
            const originalLink = shopeeLinks[0];
            
@@ -98,21 +127,43 @@ export async function fetchProductOffers({ limit = 20 } = {}) {
            
            // Gera o link de afiliado oficial do usuário
            const finalLink = await generateShopeeShortLink(originalLink);
-           
-           const msgId = $(el).attr("data-post") || String(Math.random());
-           
-           products.push({
-             itemId: `shp_${msgId}`,
-             productName: title,
-             price: price,
-             priceDiscountRate: 100,
-             shopName: "Shopee",
-             offerLink: finalLink,
-             imageUrl: photoUrl,
-             commissionRate: 100,
-             ratingStar: 5,
-             sales: 1000
-           });
+            
+            // Preserva legenda original substituindo os links e limpando tags não suportadas
+            const textEl = $(el).find(".tgme_widget_message_text").clone();
+            textEl.find("a").each((_, aEl) => {
+              const href = $(aEl).attr("href") || "";
+              if (href.includes("shopee.com") || href.includes("shope.ee")) {
+                $(aEl).attr("href", finalLink);
+                if ($(aEl).text().includes(originalLink) || $(aEl).text().includes("shope.ee") || $(aEl).text().includes("shopee.com")) {
+                  $(aEl).text(finalLink);
+                }
+              }
+            });
+
+            let originalCaption = textEl.html() || "";
+            originalCaption = originalCaption.replace(/<br\s*\/?>/gi, "\n");
+            originalCaption = originalCaption.replace(/<strong\b[^>]*>/gi, "<b>").replace(/<\/strong>/gi, "</b>");
+            originalCaption = originalCaption.replace(/<em\b[^>]*>/gi, "<i>").replace(/<\/em>/gi, "</i>");
+            originalCaption = originalCaption.replace(/<(?!\/?(b|i|a|s|u|code|pre|span|tg-spoiler)\b)[^>]+>/gi, "");
+            originalCaption = originalCaption.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+            originalCaption = originalCaption.split(originalLink).join(finalLink);
+            
+            const msgId = $(el).attr("data-post") || String(Math.random());
+            
+            products.push({
+              itemId: `shp_${msgId}`,
+              productName: title,
+              price: price,
+              priceDiscountRate: discountPct,
+              shopName: "Shopee",
+              offerLink: finalLink,
+              imageUrl: photoUrl,
+              commissionRate: 100,
+              ratingStar: 5,
+              sales: 1000,
+              originalCaption,
+              discountPct
+            });
         }
       }
       

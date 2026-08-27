@@ -92,7 +92,37 @@ async function runCycle() {
 
   for (const product of newOffers) {
     try {
-      const caption = formatOfferMessage(product, settings.globalCoupon);
+      let caption = product.originalCaption;
+      if (caption) {
+        let footerLines = [];
+
+        if (product.discountPct > 0 && product.discountPct < 100) {
+          footerLines.push(`📉 <b>Desconto: ${product.discountPct}% OFF!</b>`);
+        }
+
+        const isShopee = product.shopName === "Shopee" || (product.offerLink || "").includes("shopee");
+        const isML = product.shopName === "Mercado Livre" || (product.offerLink || "").includes("mercadolivre");
+
+        if (settings.globalCoupon) {
+          footerLines.push(`🎟️ <b>Use o cupom:</b> <code>${settings.globalCoupon}</code>`);
+        } else if (isShopee && settings.shopeeCoupon) {
+          footerLines.push(`🧡 <b>Cupom Shopee:</b> <code>${settings.shopeeCoupon}</code>`);
+        } else if (isML && settings.mlCoupon) {
+          footerLines.push(`💛 <b>Cupom ML:</b> <code>${settings.mlCoupon}</code>`);
+        } else if (isShopee) {
+          footerLines.push(`🎫 <b>Cupons de frete grátis e descontos disponíveis no app!</b>`);
+        }
+
+        if (footerLines.length > 0) {
+          caption += "\n\n" + footerLines.join("\n");
+        }
+      } else {
+        const coupon = settings.globalCoupon ||
+          (product.shopName === "Shopee" ? settings.shopeeCoupon : "") ||
+          (product.shopName === "Mercado Livre" ? settings.mlCoupon : "");
+        caption = formatOfferMessage(product, coupon);
+      }
+
       await sendPhotoMessage({ imageUrl: product.imageUrl, caption });
       
       if (settings.whatsappGroups && settings.whatsappGroups.length > 0) {
@@ -182,6 +212,8 @@ if (runOnce) {
 /avalmin [nota] - Ex: /avalmin 4.5
 /vendasmin [valor] - Ex: /vendasmin 100
 /cupom [codigo] - Adiciona cupom global (use /cupom off para remover)
+/cupomshopee [codigo] - Adiciona cupom para Shopee (use /cupomshopee off para remover)
+/cupomml [codigo] - Adiciona cupom para Mercado Livre (use /cupomml off para remover)
 
 <b>🗂️ Categorias & Canais</b>
 /categorias - Ver categorias ativas
@@ -232,11 +264,13 @@ if (runOnce) {
                     `📉 <b>Desconto Mínimo:</b> ${settings.minDiscount}%\n` +
                     `⭐ <b>Avaliação Mínima:</b> ${settings.minRating}\n` +
                     `🛒 <b>Vendas Mínimas:</b> ${settings.minSales}\n` +
-                    `🎟️ <b>Cupom Global:</b> ${settings.globalCoupon ? settings.globalCoupon : "Nenhum (Usando alerta genérico)"}\n` +
+                    `🎟️ <b>Cupom Global:</b> ${settings.globalCoupon ? settings.globalCoupon : "Nenhum"}\n` +
+                    `🧡 <b>Cupom Shopee:</b> ${settings.shopeeCoupon ? settings.shopeeCoupon : "Nenhum (Usando alerta genérico)"}\n` +
+                    `💛 <b>Cupom Mercado Livre:</b> ${settings.mlCoupon ? settings.mlCoupon : "Nenhum"}\n` +
                     `📡 <b>Canais Alvo (ML):</b> ${(settings.cloneChannels || []).length > 0 ? (settings.cloneChannels || []).join(", ") : "Nenhum"}\n` +
                     `🚫 <b>Palavras Bloqueadas:</b> ${settings.blockedKeywords.length} palavras\n` +
                     `🗂️ <b>Categorias Ativas:</b> ${settings.activeCategories.length === 0 ? "Todas (Nenhum filtro)" : settings.activeCategories.join(", ")}\n\n` +
-                    `<i>Comandos: /pausar, /retomar, /zerar, /frequencia [min], /comissao [valor], /descontomin [valor], /avalmin [valor], /vendasmin [valor], /cupom [codigo], /bloquear [palavra], /desbloquear [palavra], /categorias, /ativar [cat], /desativar [cat], /addcanal [canal], /rmcanal [canal]</i>`;
+                    `<i>Comandos: /pausar, /retomar, /zerar, /frequencia [min], /comissao [valor], /descontomin [valor], /avalmin [valor], /vendasmin [valor], /cupom [codigo], /cupomshopee [codigo], /cupomml [codigo], /bloquear [palavra], /desbloquear [palavra], /categorias, /ativar [cat], /desativar [cat], /addcanal [canal], /rmcanal [canal]</i>`;
         await sendTextMessage({ text: msg, chat_id: chatId });
         return;
       }
@@ -333,11 +367,41 @@ if (runOnce) {
         if (value.toLowerCase() === "off") {
           settings.globalCoupon = "";
           saveSettings(settings);
-          await sendTextMessage({ text: `🎟️ Cupom global <b>removido</b>. O bot usará o alerta genérico de frete grátis.`, chat_id: chatId });
+          await sendTextMessage({ text: `🎟️ Cupom global <b>removido</b>.`, chat_id: chatId });
         } else {
           settings.globalCoupon = value;
           saveSettings(settings);
           await sendTextMessage({ text: `🎟️ Cupom global alterado para: <code>${value}</code>. Ele aparecerá em todas as postagens!`, chat_id: chatId });
+        }
+        return;
+      }
+
+      if (text.startsWith("/cupomshopee ")) {
+        const value = text.replace("/cupomshopee", "").trim();
+        const settings = loadSettings();
+        if (value.toLowerCase() === "off") {
+          settings.shopeeCoupon = "";
+          saveSettings(settings);
+          await sendTextMessage({ text: `🧡 Cupom da Shopee <b>removido</b>. O bot usará o alerta genérico de frete grátis.`, chat_id: chatId });
+        } else {
+          settings.shopeeCoupon = value;
+          saveSettings(settings);
+          await sendTextMessage({ text: `🧡 Cupom da Shopee alterado para: <code>${value}</code>. Aparecerá nas postagens da Shopee!`, chat_id: chatId });
+        }
+        return;
+      }
+
+      if (text.startsWith("/cupomml ")) {
+        const value = text.replace("/cupomml", "").trim();
+        const settings = loadSettings();
+        if (value.toLowerCase() === "off") {
+          settings.mlCoupon = "";
+          saveSettings(settings);
+          await sendTextMessage({ text: `💛 Cupom do Mercado Livre <b>removido</b>.`, chat_id: chatId });
+        } else {
+          settings.mlCoupon = value;
+          saveSettings(settings);
+          await sendTextMessage({ text: `💛 Cupom do Mercado Livre alterado para: <code>${value}</code>. Aparecerá nas postagens do ML!`, chat_id: chatId });
         }
         return;
       }
