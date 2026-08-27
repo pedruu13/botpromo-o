@@ -82,10 +82,15 @@ export async function fetchMercadoLivreOffers({ limit = 20 } = {}) {
               ? `${originalLink}&${affiliateId}` 
               : `${originalLink}?${affiliateId}`;
            
-           let title = text.split('\n')[0].trim();
-           if (title.length < 5 || title.includes("🔥")) {
-              title = text.split('\n').find(l => l.trim().length > 10 && !l.includes("http")) || title;
-           }
+           // Pega as linhas, remove as que são links (t.me, http), menções (@), preços e emojis puros
+           const lines = text.split('\n')
+             .map(l => l.trim())
+             .filter(l => l.length > 5) // ignora linhas muito curtas
+             .filter(l => !l.includes("t.me") && !l.includes("http") && !l.includes("@")) // remove canais
+             .filter(l => !/R\$\s*[\d,.]+/.test(l)); // remove a linha de preço
+           
+           let title = lines.length > 0 ? lines[0] : "Oferta Especial do Mercado Livre";
+
            
            const msgId = $(el).attr("data-post") || String(Math.random());
            

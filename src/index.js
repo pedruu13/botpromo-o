@@ -161,6 +161,41 @@ if (runOnce) {
       }
 
       // 1. Tratamento de Comandos
+      if (text.startsWith("/comandos") || text.startsWith("/help") || text.startsWith("/ajuda")) {
+        const helpMsg = `🤖 <b>Manual do Piloto Automático</b>
+
+<b>🔌 Conexão & Relatórios</b>
+/status (ou /config) - Painel de configurações
+/relatorio - Faturamento do dia
+/wppqr - Gera QR Code do WhatsApp
+/whatsappgrupo - (Usar DENTRO do WhatsApp) Vincula o grupo
+
+<b>🕹️ Controle de Disparos</b>
+/pausar - Pausa o bot
+/retomar - Volta a postar
+/frequencia [minutos] - Ex: /frequencia 60
+/zerar - Apaga memória de produtos postados
+
+<b>💎 Filtros de Qualidade</b>
+/comissao [valor] - Ex: /comissao 10
+/descontomin [valor] - Ex: /descontomin 20
+/avalmin [nota] - Ex: /avalmin 4.5
+/vendasmin [valor] - Ex: /vendasmin 100
+/cupom [codigo] - Adiciona cupom global (use /cupom off para remover)
+
+<b>🗂️ Categorias & Canais</b>
+/categorias - Ver categorias ativas
+/ativar [nome] - Liga categoria
+/desativar [nome] - Desliga categoria
+/addcanal [nome_sem_arroba] - Adiciona canal ML pra clonar
+/rmcanal [nome] - Remove canal da clonagem
+
+<b>🚫 Palavras Proibidas</b>
+/bloquear [palavra] - Censura produto
+/desbloquear [palavra] - Libera palavra`;
+        await sendTextMessage({ text: helpMsg, chat_id: chatId });
+        return;
+      }
       if (text.startsWith("/wppqr")) {
         console.log(`Comando recebido: /wppqr do chat ${chatId}`);
         const { getCurrentQr } = await import("./whatsappClient.js");
