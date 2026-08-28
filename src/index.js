@@ -293,7 +293,8 @@ if (runOnce) {
 
       if (text.startsWith("/zerar")) {
         clearPosted();
-        await sendTextMessage({ text: `🧹 <b>Memória apagada!</b>\nO bot "esqueceu" todos os produtos que já postou e pode repeti-los a partir de agora.`, chat_id: chatId });
+        await sendTextMessage({ text: `🧹 <b>Memória apagada!</b>\nO bot "esqueceu" todos os produtos que já postou e está varrendo as ofertas agora mesmo...`, chat_id: chatId });
+        runCycle(); // Dispara imediatamente após zerar!
         return;
       }
 
