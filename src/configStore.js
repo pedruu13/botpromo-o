@@ -13,7 +13,7 @@ const defaultSettings = {
   mlCoupon: "",
   isPaused: false,
   fetchInterval: 30,
-  cloneChannels: ["EconoMister"],
+  cloneChannels: ["RadarRpadilha"],
   whatsappGroups: [],
   blockedKeywords: [
     "biquíni", "biquini", "lingerie", "calcinha", "sutiã", "sutia",
