@@ -127,7 +127,9 @@ export async function fetchMercadoLivreOffers({ limit = 20 } = {}) {
         // Processamento assíncrono para cada mensagem
         for (let i = 0; i < $(".tgme_widget_message").length; i++) {
           const el = $(".tgme_widget_message")[i];
-          const text = $(el).find(".tgme_widget_message_text").text() || "";
+          const htmlContent = $(el).find(".tgme_widget_message_text").html() || "";
+          const text = htmlContent.replace(/<br\s*[\/]?>/gi, "\n").replace(/<[^>]+>/g, ""); // strip tags
+          
           const photoStyle = $(el).find(".tgme_widget_message_photo_wrap").attr("style") || "";
           const match = photoStyle.match(/url\('(.*?)'\)/);
           let photoUrl = match ? match[1] : null;

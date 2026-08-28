@@ -99,7 +99,11 @@ export async function fetchProductOffers({ limit = 20 } = {}) {
       const messages = $(".tgme_widget_message").toArray();
       
       for (const el of messages) {
-        const text = $(el).find(".tgme_widget_message_text").text() || "";
+        // O Telegram Web usa <br> pra pular linha, mas o .text() do Cheerio remove e junta tudo.
+        // Vamos arrumar isso pegando o HTML interno e substituindo.
+        const htmlContent = $(el).find(".tgme_widget_message_text").html() || "";
+        const text = htmlContent.replace(/<br\s*[\/]?>/gi, "\n").replace(/<[^>]+>/g, ""); // strip tags
+        
         const photoStyle = $(el).find(".tgme_widget_message_photo_wrap").attr("style") || "";
         const match = photoStyle.match(/url\('(.*?)'\)/);
         let photoUrl = match ? match[1] : null;
