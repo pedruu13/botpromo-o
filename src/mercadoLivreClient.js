@@ -102,7 +102,7 @@ function extractPriceAndDiscount(text) {
 /**
  * Busca produtos no Mercado Livre usando a tÃ©cnica de Espelho (Clonagem de Canais PÃºblicos do Telegram).
  */
-export async function fetchMercadoLivreOffers({ limit = 20 } = {}) {
+export async function fetchMercadoLivreCloneOffers({ limit = 20 } = {}) {
   const affiliateId = process.env.MERCADO_LIVRE_AFFILIATE_ID || "";
   
   if (!affiliateId) {
@@ -215,3 +215,41 @@ export async function fetchMercadoLivreOffers({ limit = 20 } = {}) {
   console.log(`âœ… [Mercado Livre] ${finalList.length} ofertas clonadas dos canais (${channels.join(", ")})`);
   return finalList;
 }
+  
+export async function fetchMercadoLivreAutoOffers({ limit = 10 } = {}) {  
+  const affiliateId = process.env.MERCADO_LIVRE_AFFILIATE_ID;  
+  if (!affiliateId) return [];  
+  try {  
+    const url = 'https://api.mercadolibre.com/sites/MLB/search?deal_of_the_day=true';  
+    const response = await fetch(url);  
+    const data = await response.json();  
+    if (!data.results) return [];  
+    const products = data.results.map(item => {  
+      const salePrice = item.price;  
+      const originalPrice = item.original_price || salePrice;  
+      let discountRate = 0;  
+      if (originalPrice > salePrice) discountRate = ((originalPrice - salePrice) / originalPrice) * 100;  
+      const separator = item.permalink.includes('?') ? '&' : '?';  
+      const affiliateLink = ${item.permalink}affiliate_id=;  
+      const imageUrl = item.thumbnail.replace('-I.jpg', '-O.jpg');  
+      return {  
+        itemId: 'auto_' + item.id,  
+        productName: item.title,  
+        price: salePrice,  
+        priceDiscountRate: discountRate,  
+        shopName: 'Mercado Livre',  
+        offerLink: affiliateLink,  
+        imageUrl: imageUrl,  
+        commissionRate: 100,  
+        ratingStar: 5,  
+        sales: 1000  
+      };  
+    });  
+    const finalList = products.slice(0, limit);  
+    console.log(? [Mercado Livre Autom tico]  ofertas rand“micas capturadas!);  
+    return finalList;  
+  } catch (error) {  
+    console.error('Erro no ML Autom tico:', error.message);  
+    return [];  
+  }  
+} 

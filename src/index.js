@@ -3,7 +3,7 @@ import cron from "node-cron";
 import { fetchProductOffers } from "./shopeeClient.js";
 import { fetchAliExpressOffers } from "./aliExpressClient.js";
 import { fetchAwinOffers } from "./awinClient.js";
-import { fetchMercadoLivreOffers } from "./mercadoLivreClient.js";
+import { fetchMercadoLivreCloneOffers, fetchMercadoLivreAutoOffers } from "./mercadoLivreClient.js";
 import { sendPhotoMessage } from "./telegramClient.js";
 import { filterUnposted, markAsPosted, clearPosted } from "./store.js";
 import { formatOfferMessage } from "./formatMessage.js";
@@ -43,22 +43,24 @@ async function runCycle() {
 
   let offers = [];
   try {
-    const [shopeeResult, aliResult, awinResult, mlResult] = await Promise.allSettled([
+    const [shopeeResult, aliResult, awinResult, mlCloneResult, mlAutoResult] = await Promise.allSettled([
       fetchProductOffers({ limit: PRODUCTS_PER_FETCH }),
       fetchAliExpressOffers({ limit: PRODUCTS_PER_FETCH }),
       fetchAwinOffers({ limit: PRODUCTS_PER_FETCH }),
-      fetchMercadoLivreOffers({ limit: PRODUCTS_PER_FETCH }),
+      fetchMercadoLivreCloneOffers({ limit: PRODUCTS_PER_FETCH }),
+      fetchMercadoLivreAutoOffers({ limit: 10 }),
     ]);
 
     const shopeeOffers = shopeeResult.status === "fulfilled" ? shopeeResult.value : [];
     const aliOffers = aliResult.status === "fulfilled" ? aliResult.value : [];
     const awinOffers = awinResult.status === "fulfilled" ? awinResult.value : [];
-    const mlOffers = mlResult.status === "fulfilled" ? mlResult.value : [];
+    const mlOffers = [...(mlCloneResult.status === "fulfilled" ? mlCloneResult.value : []), ...(mlAutoResult.status === "fulfilled" ? mlAutoResult.value : [])];
 
     if (shopeeResult.status === "rejected") console.error("Falha Shopee:", shopeeResult.reason);
     if (aliResult.status === "rejected") console.error("Falha AliExpress:", aliResult.reason);
     if (awinResult.status === "rejected") console.error("Falha Awin:", awinResult.reason);
-    if (mlResult.status === "rejected") console.error("Falha Mercado Livre:", mlResult.reason);
+    if (mlCloneResult.status === "rejected") console.error("Falha Mercado Livre Espelho:", mlCloneResult.reason);
+    if (mlAutoResult.status === "rejected") console.error("Falha Mercado Livre Automático:", mlAutoResult.reason);
 
     offers = [...shopeeOffers, ...aliOffers, ...awinOffers, ...mlOffers];
   } catch (err) {
