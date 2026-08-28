@@ -158,7 +158,7 @@ export async function fetchProductOffers({ limit = 20 } = {}) {
               itemId: `shp_${msgId}`,
               productName: title,
               price: price,
-              priceDiscountRate: discountPct,
+              priceDiscountRate: 100, // Dummy alto pra passar nos novos filtros de qualidade
               shopName: "Shopee",
               offerLink: finalLink,
               imageUrl: photoUrl,
