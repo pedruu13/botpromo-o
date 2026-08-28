@@ -9,6 +9,23 @@ const { SHOPEE_APP_ID, SHOPEE_APP_SECRET, SHOPEE_API_URL } = process.env;
  * Gera o header de autorização exigido pela Shopee Affiliate Open API.
  * Fórmula oficial: SHA256(appId + timestamp + payload + secret)
  */
+export async function expandShopeeUrl(url) {
+  try {
+    const res = await fetch(url, { redirect: 'manual' });
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location');
+      if (location && location.includes('shopee.com.br')) {
+         const urlObj = new URL(location);
+         return urlObj.origin + urlObj.pathname; 
+      }
+    }
+    return url;
+  } catch (error) {
+    console.error('Erro ao expandir URL da Shopee:', error.message);
+    return url;
+  }
+}
+
 function buildAuthHeader(payloadString) {
   const timestamp = Math.floor(Date.now() / 1000);
   const base = `${SHOPEE_APP_ID}${timestamp}${payloadString}${SHOPEE_APP_SECRET}`;
@@ -129,8 +146,9 @@ export async function fetchProductOffers({ limit = 20 } = {}) {
            
            let title = lines.length > 0 ? lines[0] : "Oferta Especial Shopee";
            
-           // Gera o link de afiliado oficial do usuário
-           const finalLink = await generateShopeeShortLink(originalLink);
+           // Gera o link de afiliado oficial do usuário descompactando o link curto
+           const expandedLink = await expandShopeeUrl(originalLink);
+           const finalLink = await generateShopeeShortLink(expandedLink);
             
             // Preserva legenda original substituindo os links e limpando tags não suportadas
             const textEl = $(el).find(".tgme_widget_message_text").clone();
@@ -158,7 +176,8 @@ export async function fetchProductOffers({ limit = 20 } = {}) {
               itemId: `shp_${msgId}`,
               productName: title,
               price: price,
-              priceDiscountRate: 100, // Dummy alto pra passar nos novos filtros de qualidade
+              priceDiscountRate: discountPct,
+              isClone: true,
               shopName: "Shopee",
               offerLink: finalLink,
               imageUrl: photoUrl,

@@ -73,6 +73,8 @@ async function runCycle() {
     .filter((o) => isAppropriate(o, settings.blockedKeywords, settings.activeCategories, settings.categories))
     .filter((o) => {
       // nova regra de qualidade
+      if (o.isClone) return true; // Se foi postado pelo concorrente, confiamos que é bom e pulamos os filtros
+
       if (settings.minDiscount > 0) {
         if ((o.priceDiscountRate || 0) < settings.minDiscount) return false;
       }
