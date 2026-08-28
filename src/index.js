@@ -94,36 +94,10 @@ async function runCycle() {
 
   for (const product of newOffers) {
     try {
-      let caption = product.originalCaption;
-      if (caption) {
-        let footerLines = [];
-
-        if (product.discountPct > 0 && product.discountPct < 100) {
-          footerLines.push(`📉 <b>Desconto: ${product.discountPct}% OFF!</b>`);
-        }
-
-        const isShopee = product.shopName === "Shopee" || (product.offerLink || "").includes("shopee");
-        const isML = product.shopName === "Mercado Livre" || (product.offerLink || "").includes("mercadolivre");
-
-        if (settings.globalCoupon) {
-          footerLines.push(`🎟️ <b>Use o cupom:</b> <code>${settings.globalCoupon}</code>`);
-        } else if (isShopee && settings.shopeeCoupon) {
-          footerLines.push(`🧡 <b>Cupom Shopee:</b> <code>${settings.shopeeCoupon}</code>`);
-        } else if (isML && settings.mlCoupon) {
-          footerLines.push(`💛 <b>Cupom ML:</b> <code>${settings.mlCoupon}</code>`);
-        } else if (isShopee) {
-          footerLines.push(`🎫 <b>Cupons de frete grátis e descontos disponíveis no app!</b>`);
-        }
-
-        if (footerLines.length > 0) {
-          caption += "\n\n" + footerLines.join("\n");
-        }
-      } else {
-        const coupon = settings.globalCoupon ||
-          (product.shopName === "Shopee" ? settings.shopeeCoupon : "") ||
-          (product.shopName === "Mercado Livre" ? settings.mlCoupon : "");
-        caption = formatOfferMessage(product, coupon);
-      }
+      const coupon = settings.globalCoupon ||
+        (product.shopName === "Shopee" ? settings.shopeeCoupon : "") ||
+        (product.shopName === "Mercado Livre" ? settings.mlCoupon : "");
+      let caption = formatOfferMessage(product, coupon);
 
       await sendPhotoMessage({ imageUrl: product.imageUrl, caption });
       

@@ -188,7 +188,7 @@ export async function fetchMercadoLivreCloneOffers({ limit = 20 } = {}) {
                itemId: `ml_${msgId}`,
                productName: title,
                price: price,
-               priceDiscountRate: discountPct,
+               priceDiscountRate: 100,
                shopName: "Mercado Livre",
                offerLink: finalLink,
                imageUrl: photoUrl,
