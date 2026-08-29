@@ -281,8 +281,7 @@ export async function fetchMercadoLivreAutoOffers({ limit = 10 } = {}) {
           ratingStar: 5,
           sales: 1000,
         };
-      })
-      .filter(p => p.priceDiscountRate >= 10); // mínimo 10% de desconto
+      }); // sem filtro de desconto mínimo para achadinhos
     
     const finalList = products.slice(0, limit);
     console.log(`[Mercado Livre Automático] ${finalList.length} ofertas com desconto capturadas!`);

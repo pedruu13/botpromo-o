@@ -1,6 +1,6 @@
 import "dotenv/config";
 import cron from "node-cron";
-import { fetchProductOffers } from "./shopeeClient.js";
+import { fetchProductOffers, fetchShopeeAutoOffers } from "./shopeeClient.js";
 import { fetchAliExpressOffers } from "./aliExpressClient.js";
 import { fetchAwinOffers } from "./awinClient.js";
 import { fetchMercadoLivreCloneOffers, fetchMercadoLivreAutoOffers } from "./mercadoLivreClient.js";
@@ -43,29 +43,34 @@ async function runCycle() {
 
   let offers = [];
   try {
-    const [shopeeResult, aliResult, awinResult, mlCloneResult, mlAutoResult] = await Promise.allSettled([
+    const [shopeeCloneResult, shopeeAutoResult, aliResult, awinResult, mlCloneResult, mlAutoResult] = await Promise.allSettled([
       fetchProductOffers({ limit: PRODUCTS_PER_FETCH }),
+      fetchShopeeAutoOffers({ limit: 10 }),
       fetchAliExpressOffers({ limit: PRODUCTS_PER_FETCH }),
       fetchAwinOffers({ limit: PRODUCTS_PER_FETCH }),
       fetchMercadoLivreCloneOffers({ limit: PRODUCTS_PER_FETCH }),
       fetchMercadoLivreAutoOffers({ limit: 10 }),
     ]);
 
-    const shopeeOffers = shopeeResult.status === "fulfilled" ? shopeeResult.value : [];
+    const shopeeCloneOffers = shopeeCloneResult.status === "fulfilled" ? shopeeCloneResult.value : [];
+    const shopeeAutoOffers = shopeeAutoResult.status === "fulfilled" ? shopeeAutoResult.value : [];
     const aliOffers = aliResult.status === "fulfilled" ? aliResult.value : [];
     const awinOffers = awinResult.status === "fulfilled" ? awinResult.value : [];
     const mlCloneOffers = mlCloneResult.status === "fulfilled" ? mlCloneResult.value : [];
     const mlAutoOffers = mlAutoResult.status === "fulfilled" ? mlAutoResult.value : [];
+    
     const mlOffers = [...mlCloneOffers, ...mlAutoOffers];
+    const shopeeOffers = [...shopeeCloneOffers, ...shopeeAutoOffers];
 
-    if (shopeeResult.status === "rejected") console.error("Falha Shopee:", shopeeResult.reason);
+    if (shopeeCloneResult.status === "rejected") console.error("Falha Shopee Clone:", shopeeCloneResult.reason);
+    if (shopeeAutoResult.status === "rejected") console.error("Falha Shopee Auto:", shopeeAutoResult.reason);
     if (aliResult.status === "rejected") console.error("Falha AliExpress:", aliResult.reason);
     if (awinResult.status === "rejected") console.error("Falha Awin:", awinResult.reason);
     if (mlCloneResult.status === "rejected") console.error("Falha Mercado Livre Espelho:", mlCloneResult.reason);
     if (mlAutoResult.status === "rejected") console.error("Falha Mercado Livre Automático:", mlAutoResult.reason);
 
     // Log de diagnóstico — mostra quanto cada fonte trouxe
-    console.log(`📦 Fontes: Shopee=${shopeeOffers.length} | AliExpress=${aliOffers.length} | Awin=${awinOffers.length} | ML Espelho=${mlCloneOffers.length} | ML Auto=${mlAutoOffers.length}`);
+    console.log(`📦 Fontes: Shopee Clone=${shopeeCloneOffers.length} | Shopee Auto=${shopeeAutoOffers.length} | AliExpress=${aliOffers.length} | Awin=${awinOffers.length} | ML Espelho=${mlCloneOffers.length} | ML Auto=${mlAutoOffers.length}`);
 
     offers = [...shopeeOffers, ...aliOffers, ...awinOffers, ...mlOffers];
   } catch (err) {
@@ -77,21 +82,7 @@ async function runCycle() {
     .filter((o) => Number(o.commissionRate || 0) >= settings.minCommission)
     .filter((o) => isAppropriate(o, settings.blockedKeywords, settings.activeCategories, settings.categories))
     .filter((o) => {
-      // Para produtos do modo espião/clonagem, confiamos que o outro canal já fez a curadoria humana (evita barrar promoções reais sem cupom explícito)
-      if (o.isClone) return true;
-
-      // Filtro de desconto — só aplica se o produto for automático e tiver essa info
-      if (settings.minDiscount > 0 && o.priceDiscountRate !== undefined) {
-        if ((o.priceDiscountRate || 0) < settings.minDiscount) {
-          return false;
-        }
-      }
-
-      // Filtro de vendas/avaliação — só aplica para o modo automático
-      if (o.shopName === "Shopee" && o.sales !== undefined) {
-         if (settings.minSales > 0 && (o.sales || 0) < settings.minSales) return false;
-         if (settings.minRating > 0 && (o.ratingStar || 0) < settings.minRating) return false;
-      }
+      // Para bot de achadinhos, postar TUDO (sem restrições de desconto mínimo, avaliações ou vendas)
       return true;
     });
 

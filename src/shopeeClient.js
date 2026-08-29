@@ -11,13 +11,11 @@ const { SHOPEE_APP_ID, SHOPEE_APP_SECRET, SHOPEE_API_URL } = process.env;
  */
 export async function expandShopeeUrl(url) {
   try {
-    const res = await fetch(url, { redirect: 'manual' });
-    if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get('location');
-      if (location && location.includes('shopee.com.br')) {
-         const urlObj = new URL(location);
-         return urlObj.origin + urlObj.pathname; 
-      }
+    const res = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } });
+    const finalUrl = res.url;
+    if (finalUrl && finalUrl.includes('shopee')) {
+       const urlObj = new URL(finalUrl);
+       return urlObj.origin + urlObj.pathname; 
     }
     return url;
   } catch (error) {
@@ -276,6 +274,67 @@ export async function generateShopeeShortLink(originalUrl) {
     console.error("Erro ao gerar shortlink da Shopee:", error.message);
     // Fallback: link limpo sem parâmetros do concorrente
     return cleanCompetitorParams(originalUrl);
+  }
+}
+
+/**
+ * Busca ofertas automáticas da Shopee (sem depender de clonagem) usando a API oficial.
+ */
+export async function fetchShopeeAutoOffers({ limit = 10 } = {}) {
+  const { SHOPEE_APP_ID, SHOPEE_APP_SECRET } = process.env;
+  if (!SHOPEE_APP_ID || !SHOPEE_APP_SECRET) {
+    console.log("⚠️ [Shopee Auto] Credenciais da API não configuradas. Pulando busca automática.");
+    return [];
+  }
+
+  const query = `
+    query OfferList($limit: Int!) {
+      offerList(limit: $limit, sortType: TOP_SALES) {
+        nodes {
+          itemId
+          productName
+          price
+          priceDiscountRate
+          offerLink
+          imageUrl
+          commissionRate
+          ratingStar
+          sales
+        }
+      }
+    }
+  `;
+
+  try {
+    const data = await shopeeGraphQL(query, { limit });
+    if (!data || !data.offerList || !data.offerList.nodes) return [];
+
+    const rawOffers = data.offerList.nodes;
+    const offers = [];
+
+    for (const item of rawOffers) {
+      // Usar a mesma estrutura do clone
+      offers.push({
+        itemId: `shp_auto_${item.itemId}`,
+        productName: item.productName,
+        price: parseFloat(item.price) || 0,
+        priceDiscountRate: item.priceDiscountRate || 0,
+        isClone: false,
+        shopName: "Shopee",
+        offerLink: item.offerLink, // Link já vem com afiliado se for da API
+        imageUrl: item.imageUrl,
+        commissionRate: item.commissionRate || 100,
+        ratingStar: item.ratingStar || 5,
+        sales: item.sales || 1000,
+        originalCaption: `🔥 Super Achadinho Shopee!\n\n📦 ${item.productName}\n\n💸 Por apenas: R$ ${parseFloat(item.price).toFixed(2).replace('.', ',')}\n\n🛒 Compre aqui:`
+      });
+    }
+
+    console.log(`✅ [Shopee Automático] ${offers.length} achadinhos capturados!`);
+    return offers;
+  } catch (error) {
+    console.error("Erro ao buscar ofertas automáticas da Shopee:", error.message);
+    return [];
   }
 }
 
