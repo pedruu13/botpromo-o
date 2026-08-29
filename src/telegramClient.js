@@ -3,6 +3,7 @@ const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } = process.env;
 const BASE_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
 export async function sendPhotoMessage({ imageUrl, caption }) {
+  // Tenta enviar por URL primeiro
   const res = await fetch(`${BASE_URL}/sendPhoto`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -17,8 +18,34 @@ export async function sendPhotoMessage({ imageUrl, caption }) {
   const data = await res.json();
 
   if (!data.ok) {
-    // Se a imagem falhar (URL inválida, etc), cai pra mensagem de texto simples
-    console.error("Falha ao enviar foto, tentando texto:", data.description);
+    console.warn(`Falha ao enviar foto por URL (${data.description}). Tentando baixar e enviar como anexo...`);
+    try {
+      const imgRes = await fetch(imageUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const arrayBuffer = await imgRes.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      
+      const formData = new FormData();
+      formData.append("chat_id", TELEGRAM_CHAT_ID);
+      formData.append("photo", new Blob([buffer]), "image.jpg");
+      formData.append("caption", caption);
+      formData.append("parse_mode", "HTML");
+
+      const uploadRes = await fetch(`${BASE_URL}/sendPhoto`, {
+        method: "POST",
+        body: formData
+      });
+      const uploadData = await uploadRes.json();
+      
+      if (uploadData.ok) {
+        return uploadData;
+      } else {
+        console.error("Falha ao enviar foto baixada, tentando texto:", uploadData.description);
+      }
+    } catch (e) {
+      console.error("Erro ao baixar foto:", e.message);
+    }
+    
+    // Fallback final: mensagem de texto com link preview
     return sendTextMessage({ text: caption });
   }
 
