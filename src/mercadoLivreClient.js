@@ -223,38 +223,72 @@ export async function fetchMercadoLivreCloneOffers({ limit = 20 } = {}) {
 
 export async function fetchMercadoLivreAutoOffers({ limit = 10 } = {}) {
   const affiliateId = process.env.MERCADO_LIVRE_AFFILIATE_ID;
-  if (!affiliateId) return [];
+  
+  // Tenta buscar ofertas com desconto no ML (não precisa de credenciais)
   try {
-    const url = 'https://api.mercadolibre.com/sites/MLB/search?deal_of_the_day=true';
-    const response = await fetch(url);
-    const data = await response.json();
-    if (!data.results) return [];
-    const products = data.results.map(item => {
-      const salePrice = item.price;
-      const originalPrice = item.original_price || salePrice;
-      let discountRate = 0;
-      if (originalPrice > salePrice) discountRate = ((originalPrice - salePrice) / originalPrice) * 100;
-      const separator = item.permalink.includes('?') ? '&' : '?';
-      const affiliateLink = item.permalink + separator + 'affiliate_id=' + affiliateId;
-      const imageUrl = item.thumbnail.replace('-I.jpg', '-O.jpg');
-      return {
-        itemId: 'auto_' + item.id,
-        productName: item.title,
-        price: salePrice,
-        priceDiscountRate: discountRate,
-        shopName: 'Mercado Livre',
-        offerLink: affiliateLink,
-        imageUrl: imageUrl,
-        commissionRate: 100,
-        ratingStar: 5,
-        sales: 1000
-      };
-    });
+    // Busca produtos em promoção genérica — funciona sem autenticação
+    const urls = [
+      'https://api.mercadolibre.com/sites/MLB/search?deal_of_the_day=true&limit=50',
+      'https://api.mercadolibre.com/sites/MLB/search?promotion_type=DEAL_OF_THE_DAY&limit=50',
+      'https://api.mercadolibre.com/sites/MLB/search?q=promoção&sort=relevance&limit=50',
+    ];
+    
+    let results = [];
+    for (const url of urls) {
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+          results = data.results;
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    if (results.length === 0) {
+      console.log('[Mercado Livre Automático] Nenhum resultado nas buscas automáticas.');
+      return [];
+    }
+    
+    const products = results
+      .filter(item => item.original_price && item.original_price > item.price) // só com desconto real
+      .map(item => {
+        const salePrice = item.price;
+        const originalPrice = item.original_price || salePrice;
+        const discountRate = originalPrice > salePrice
+          ? Math.round(((originalPrice - salePrice) / originalPrice) * 100)
+          : 0;
+        
+        let offerLink = item.permalink;
+        if (affiliateId) {
+          const sep = offerLink.includes('?') ? '&' : '?';
+          offerLink = `${offerLink}${sep}affiliate_id=${affiliateId}`;
+        }
+        
+        const imageUrl = (item.thumbnail || '').replace('-I.jpg', '-O.jpg');
+        
+        return {
+          itemId: 'auto_' + item.id,
+          productName: item.title,
+          price: salePrice,
+          priceDiscountRate: discountRate,
+          shopName: 'Mercado Livre',
+          offerLink,
+          imageUrl,
+          commissionRate: affiliateId ? 100 : 0,
+          ratingStar: 5,
+          sales: 1000,
+        };
+      })
+      .filter(p => p.priceDiscountRate >= 10); // mínimo 10% de desconto
+    
     const finalList = products.slice(0, limit);
-    console.log('[Mercado Livre Automático] ' + finalList.length + ' ofertas randômicas capturadas!');
+    console.log(`[Mercado Livre Automático] ${finalList.length} ofertas com desconto capturadas!`);
     return finalList;
   } catch (error) {
     console.error('Erro no ML Automático:', error.message);
     return [];
   }
-}
+}

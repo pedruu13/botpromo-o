@@ -130,15 +130,28 @@ export async function fetchProductOffers({ limit = 20 } = {}) {
            links.push($(a).attr("href"));
         });
         
-        // Filtra links da Shopee e exclui os que são de cupom/voucher (não são links de produto)
-        const COUPON_KEYWORDS = ["voucher", "coupon", "cupom", "promo", "frete", "coin", "bonus"];
-        const allShopeeLinks = links.filter(l => l && (l.includes("shopee.com") || l.includes("shope.ee")));
-        const shopeeLinks = allShopeeLinks.filter(l => !COUPON_KEYWORDS.some(kw => l.toLowerCase().includes(kw)));
+        // Expande links da Shopee ANTES de filtrar, porque encurtadores escondem o tipo
+        const allShopeeRaw = links.filter(l => l && (l.includes("shopee.com") || l.includes("shope.ee") || l.includes("s.shopee")));
+        
+        // Filtra cupons/vouchers APÓS expansão
+        const COUPON_KEYWORDS = ["voucher", "coupon", "cupom", "promo", "frete-gratis", "coin", "bonus", "shopee-coins"];
+        const shopeeLinks = allShopeeRaw.filter(l => !COUPON_KEYWORDS.some(kw => l.toLowerCase().includes(kw)));
         
         if (shopeeLinks.length > 0 && photoUrl) {
            const { price, discountPct } = extractPriceAndDiscount(text);
            
            const originalLink = shopeeLinks[0];
+           
+           // Expande o link curto ANTES de gerar o afiliado
+           const expandedLink = await expandShopeeUrl(originalLink);
+           
+           // Se depois de expandir for um link de cupom, pula
+           if (COUPON_KEYWORDS.some(kw => expandedLink.toLowerCase().includes(kw))) {
+             continue;
+           }
+           
+           // Gera link de afiliado (limpa params do concorrente)
+           const finalLink = await generateShopeeShortLink(expandedLink);
            
            // Limpa título tirando t.me, http e @
            const lines = text.split('\n')
@@ -148,10 +161,6 @@ export async function fetchProductOffers({ limit = 20 } = {}) {
              .filter(l => !/R\$\s*[\d,.]+/.test(l)); 
            
            let title = lines.length > 0 ? lines[0] : "Oferta Especial Shopee";
-           
-           // Gera o link de afiliado oficial do usuário descompactando o link curto
-           const expandedLink = await expandShopeeUrl(originalLink);
-           const finalLink = await generateShopeeShortLink(expandedLink);
             
             // Preserva legenda original substituindo os links e limpando tags não suportadas
             const textEl = $(el).find(".tgme_widget_message_text").clone();
