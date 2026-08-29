@@ -139,7 +139,10 @@ export async function fetchMercadoLivreCloneOffers({ limit = 20 } = {}) {
              links.push($(a).attr("href"));
           });
           
-          const mlLinks = links.filter(l => l && (l.includes("mercadolivre.com") || l.includes("meli.com")));
+          // Filtra links do ML e exclui links de listas/cupons (não são links de produto)
+          const COUPON_KEYWORDS_ML = ["desconto", "cupom", "voucher", "coupon", "promo", "ofertas", "oferta/list", "category"];
+          const allMlLinks = links.filter(l => l && (l.includes("mercadolivre.com") || l.includes("meli.com")));
+          const mlLinks = allMlLinks.filter(l => !COUPON_KEYWORDS_ML.some(kw => l.toLowerCase().includes(kw)));
           
           if (mlLinks.length > 0 && photoUrl) {
              const { price, discountPct } = extractPriceAndDiscount(text);

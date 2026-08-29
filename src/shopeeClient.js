@@ -130,7 +130,10 @@ export async function fetchProductOffers({ limit = 20 } = {}) {
            links.push($(a).attr("href"));
         });
         
-        const shopeeLinks = links.filter(l => l && (l.includes("shopee.com") || l.includes("shope.ee")));
+        // Filtra links da Shopee e exclui os que são de cupom/voucher (não são links de produto)
+        const COUPON_KEYWORDS = ["voucher", "coupon", "cupom", "promo", "frete", "coin", "bonus"];
+        const allShopeeLinks = links.filter(l => l && (l.includes("shopee.com") || l.includes("shope.ee")));
+        const shopeeLinks = allShopeeLinks.filter(l => !COUPON_KEYWORDS.some(kw => l.toLowerCase().includes(kw)));
         
         if (shopeeLinks.length > 0 && photoUrl) {
            const { price, discountPct } = extractPriceAndDiscount(text);
