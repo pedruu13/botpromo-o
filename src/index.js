@@ -30,7 +30,7 @@ function isAppropriate(product, blockedKeywords, activeCategories = [], categori
 
 const MIN_COMMISSION_RATE = Number(process.env.MIN_COMMISSION_RATE || 0.1);
 const PRODUCTS_PER_FETCH = Number(process.env.PRODUCTS_PER_FETCH || 20);
-const FETCH_INTERVAL_MINUTES = Number(process.env.FETCH_INTERVAL_MINUTES || 30);
+const FETCH_INTERVAL_MINUTES = Number(process.env.FETCH_INTERVAL_MINUTES || 5); // padrão: 5 min (mínimo suportado: 1 min)
 
 async function runCycle() {
   const settings = loadSettings();
@@ -294,7 +294,8 @@ if (runOnce) {
 
       if (text.startsWith("/frequencia ")) {
         const num = parseInt(text.replace("/frequencia", "").trim(), 10);
-        if (!isNaN(num) && num > 0) {
+        const MIN_FREQ = 1; // mínimo 1 minuto (limite do node-cron)
+        if (!isNaN(num) && num >= MIN_FREQ) {
           const settings = loadSettings();
           settings.fetchInterval = num;
           saveSettings(settings);
@@ -303,6 +304,8 @@ if (runOnce) {
           currentCronJob = cron.schedule(`*/${num} * * * *`, runCycle);
           
           await sendTextMessage({ text: `⏱️ Frequência alterada! Buscando ofertas a cada <b>${num} minuto(s)</b>.`, chat_id: chatId });
+        } else if (!isNaN(num) && num < MIN_FREQ) {
+          await sendTextMessage({ text: `⚠️ O mínimo suportado é <b>1 minuto</b>. Use: <code>/frequencia 1</code>`, chat_id: chatId });
         }
         return;
       }
