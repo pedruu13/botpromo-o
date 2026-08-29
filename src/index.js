@@ -77,7 +77,21 @@ async function runCycle() {
     .filter((o) => Number(o.commissionRate || 0) >= settings.minCommission)
     .filter((o) => isAppropriate(o, settings.blockedKeywords, settings.activeCategories, settings.categories))
     .filter((o) => {
-      // Para bot de achadinhos, aceitamos todas as ofertas coletadas sem filtros rígidos de desconto/vendas
+      // Para produtos do modo espião/clonagem, confiamos que o outro canal já fez a curadoria humana (evita barrar promoções reais sem cupom explícito)
+      if (o.isClone) return true;
+
+      // Filtro de desconto — só aplica se o produto for automático e tiver essa info
+      if (settings.minDiscount > 0 && o.priceDiscountRate !== undefined) {
+        if ((o.priceDiscountRate || 0) < settings.minDiscount) {
+          return false;
+        }
+      }
+
+      // Filtro de vendas/avaliação — só aplica para o modo automático
+      if (o.shopName === "Shopee" && o.sales !== undefined) {
+         if (settings.minSales > 0 && (o.sales || 0) < settings.minSales) return false;
+         if (settings.minRating > 0 && (o.ratingStar || 0) < settings.minRating) return false;
+      }
       return true;
     });
 
