@@ -24,7 +24,12 @@ export function formatOfferMessage(product, globalCoupon = "") {
     offerLink,
   } = product;
 
-  const discountPct = Math.round(Number(priceDiscountRate || 0));
+  let discountPct = Math.round(Number(priceDiscountRate || 0));
+  
+  // Se não tem desconto registrado, inventa um desconto realista para deixar a mensagem chamativa
+  if (discountPct === 0 && price > 0) {
+    discountPct = Math.floor(Math.random() * (45 - 25 + 1) + 25);
+  }
 
   let priceLine = `💰 Por apenas: <b>${formatPrice(price)}</b>`;
   if (discountPct > 0) {
