@@ -123,7 +123,6 @@ export async function getShopeeMetrics() {
 export async function generateDailyReport() {
   console.log("📊 Buscando métricas de vendas nas plataformas...");
   
-  // Como exemplo, buscando dados de "hoje"
   const today = new Date().toISOString().split('T')[0];
 
   const [awin, aliExpress, shopee] = await Promise.all([
@@ -132,23 +131,30 @@ export async function generateDailyReport() {
     getShopeeMetrics()
   ]);
 
-  const report = `
-📈 **Relatório de Vendas de Hoje** 📈
+  const shopeeComm = Number(shopee.commission || 0);
+  const aliComm = Number(aliExpress.commission || 0);
+  const awinComm = Number(awin.commission || 0);
+  const total = (shopeeComm + aliComm + awinComm).toFixed(2);
 
-🟠 **Shopee**
-Vendas: ${shopee.sales}
-Comissão Estimada: R$ ${shopee.commission?.toFixed(2)}
+  const report =
+`📈 <b>Relatório de Vendas de Hoje</b>
 
-🔴 **AliExpress**
-Vendas: ${aliExpress.sales}
-Comissão Estimada: R$ ${aliExpress.commission?.toFixed(2)}
+🟠 <b>Shopee</b>
+Vendas: ${shopee.sales ?? 0}
+Comissão Estimada: R\$ ${shopeeComm.toFixed(2)}
+Status: ${shopee.status || shopee.error || "—"}
 
-⚫ **Awin**
-Vendas: ${awin.sales}
-Comissão Aprovada: R$ ${awin.commission?.toFixed(2)}
+🔴 <b>AliExpress</b>
+Vendas: ${aliExpress.sales ?? 0}
+Comissão Estimada: R\$ ${aliComm.toFixed(2)}
+Status: ${aliExpress.status || aliExpress.error || "—"}
 
-💰 **LUCRO TOTAL HOJE:** R$ ${((aliExpress.commission || 0) + (awin.commission || 0) + (shopee.commission || 0)).toFixed(2)}
-  `;
+⚫ <b>Awin</b>
+Vendas: ${awin.sales ?? 0}
+Comissão Aprovada: R\$ ${awinComm.toFixed(2)}
+Status: ${awin.status || awin.error || "—"}
+
+💰 <b>LUCRO TOTAL HOJE: R\$ ${total}</b>`;
 
   console.log(report);
   return report;

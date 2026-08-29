@@ -54,13 +54,18 @@ async function runCycle() {
     const shopeeOffers = shopeeResult.status === "fulfilled" ? shopeeResult.value : [];
     const aliOffers = aliResult.status === "fulfilled" ? aliResult.value : [];
     const awinOffers = awinResult.status === "fulfilled" ? awinResult.value : [];
-    const mlOffers = [...(mlCloneResult.status === "fulfilled" ? mlCloneResult.value : []), ...(mlAutoResult.status === "fulfilled" ? mlAutoResult.value : [])];
+    const mlCloneOffers = mlCloneResult.status === "fulfilled" ? mlCloneResult.value : [];
+    const mlAutoOffers = mlAutoResult.status === "fulfilled" ? mlAutoResult.value : [];
+    const mlOffers = [...mlCloneOffers, ...mlAutoOffers];
 
     if (shopeeResult.status === "rejected") console.error("Falha Shopee:", shopeeResult.reason);
     if (aliResult.status === "rejected") console.error("Falha AliExpress:", aliResult.reason);
     if (awinResult.status === "rejected") console.error("Falha Awin:", awinResult.reason);
     if (mlCloneResult.status === "rejected") console.error("Falha Mercado Livre Espelho:", mlCloneResult.reason);
     if (mlAutoResult.status === "rejected") console.error("Falha Mercado Livre Automático:", mlAutoResult.reason);
+
+    // Log de diagnóstico — mostra quanto cada fonte trouxe
+    console.log(`📦 Fontes: Shopee=${shopeeOffers.length} | AliExpress=${aliOffers.length} | Awin=${awinOffers.length} | ML Espelho=${mlCloneOffers.length} | ML Auto=${mlAutoOffers.length}`);
 
     offers = [...shopeeOffers, ...aliOffers, ...awinOffers, ...mlOffers];
   } catch (err) {
@@ -72,24 +77,35 @@ async function runCycle() {
     .filter((o) => Number(o.commissionRate || 0) >= settings.minCommission)
     .filter((o) => isAppropriate(o, settings.blockedKeywords, settings.activeCategories, settings.categories))
     .filter((o) => {
-      // nova regra de qualidade
-      if (o.isClone) return true; // Se foi postado pelo concorrente, confiamos que é bom e pulamos os filtros
+      // Produtos clonados de canais: confiamos que o outro canal já fez o filtro de qualidade
+      if (o.isClone) return true;
 
-      if (settings.minDiscount > 0) {
-        if ((o.priceDiscountRate || 0) < settings.minDiscount) return false;
+      // Filtro de desconto — só aplica se o produto tiver essa info
+      if (settings.minDiscount > 0 && o.priceDiscountRate !== undefined) {
+        if ((o.priceDiscountRate || 0) < settings.minDiscount) {
+          return false;
+        }
       }
-      if (o.shopName === "Shopee" || o.sales !== undefined) {
+
+      // Filtro de vendas/avaliação — só aplica pra Shopee (que tem esses dados)
+      if (o.shopName === "Shopee" && o.sales !== undefined) {
          if (settings.minSales > 0 && (o.sales || 0) < settings.minSales) return false;
          if (settings.minRating > 0 && (o.ratingStar || 0) < settings.minRating) return false;
       }
       return true;
     });
 
+  const discarded = offers.length - goodOffers.length;
+  if (discarded > 0) {
+    console.log(`🔍 Filtros: ${offers.length} total → ${goodOffers.length} aprovados (${discarded} descartados por filtros de qualidade)`);
+  }
+
   const newOffers = filterUnposted(goodOffers, "itemId");
 
   if (newOffers.length === 0) {
     console.log("Nenhuma oferta nova pra postar neste ciclo.");
     return;
+
   }
 
   console.log(`Postando ${newOffers.length} oferta(s) nova(s)...`);
