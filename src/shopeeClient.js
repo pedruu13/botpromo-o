@@ -232,6 +232,26 @@ export async function fetchShopeeConversions() {
 }
 
 export async function generateShopeeShortLink(originalUrl) {
+  const { SHOPEE_APP_ID, SHOPEE_APP_SECRET } = process.env;
+
+  // Helper: remove parâmetros de afiliado do concorrente e retorna URL limpa
+  function cleanCompetitorParams(url) {
+    try {
+      const urlObj = new URL(url);
+      ["mmp_pid","utm_source","utm_medium","utm_campaign","utm_content","utm_term",
+       "sp_atk","xptdk","uls_trackid","gads_t_sig","extraParams"].forEach(p => urlObj.searchParams.delete(p));
+      return urlObj.toString();
+    } catch {
+      return url;
+    }
+  }
+
+  // Se não tem credenciais da API Shopee, retorna link limpo (sem afiliado do concorrente)
+  if (!SHOPEE_APP_ID || !SHOPEE_APP_SECRET) {
+    console.log("[Shopee] Sem credenciais da API, usando link limpo sem afiliado do concorrente.");
+    return cleanCompetitorParams(originalUrl);
+  }
+
   const query = `
     mutation GenerateShortLink($originUrl: String!) {
       generateShortLink(input: {originUrl: $originUrl}) {
@@ -242,9 +262,11 @@ export async function generateShopeeShortLink(originalUrl) {
 
   try {
     const data = await shopeeGraphQL(query, { originUrl: originalUrl });
-    return data?.generateShortLink?.shortLink || originalUrl;
+    return data?.generateShortLink?.shortLink || cleanCompetitorParams(originalUrl);
   } catch (error) {
     console.error("Erro ao gerar shortlink da Shopee:", error.message);
-    return originalUrl;
+    // Fallback: link limpo sem parâmetros do concorrente
+    return cleanCompetitorParams(originalUrl);
   }
 }
+

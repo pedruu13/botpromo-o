@@ -151,10 +151,10 @@ export async function fetchMercadoLivreCloneOffers({ limit = 20 } = {}) {
              const originalLink = mlLinks[0];
              const cleanLink = await expandAndCleanUrl(originalLink);
              
-             // Aplica o SEU afiliado no link limpo
+             // Aplica o SEU afiliado no link limpo (formato correto: affiliate_id=SEU_ID)
              const finalLink = cleanLink.includes("?") 
-                ? `${cleanLink}&${affiliateId}` 
-                : `${cleanLink}?${affiliateId}`;
+                ? `${cleanLink}&affiliate_id=${affiliateId}` 
+                : `${cleanLink}?affiliate_id=${affiliateId}`;
              
              // Pega as linhas, remove as que são links (t.me, http), menções (@), preços e emojis puros
              const lines = text.split('\n')
