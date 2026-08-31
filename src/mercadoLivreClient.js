@@ -229,75 +229,8 @@ export async function fetchMercadoLivreCloneOffers({ limit = 20 } = {}) {
 
 
 export async function fetchMercadoLivreAutoOffers({ limit = 10 } = {}) {
-  const targetChannel = "EconoMister";
-  const allProducts = [];
-  try {
-    const url = `https://t.me/s/${targetChannel}`;
-    const response = await fetch(url);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    
-    const messages = $(".tgme_widget_message").toArray();
-    for (const el of messages) {
-      const htmlContent = $(el).find(".tgme_widget_message_text").html() || "";
-      const text = htmlContent.replace(/<br\s*[\/]?>/gi, "\n").replace(/<[^>]+>/g, "");
-      
-      const photoStyle = $(el).find(".tgme_widget_message_photo_wrap").attr("style") || "";
-      const match = photoStyle.match(/url\('(.*?)'\)/);
-      let photoUrl = match ? match[1] : null;
-      
-      const links = [];
-      $(el).find(".tgme_widget_message_text a").each((j, a) => {
-         links.push($(a).attr("href"));
-      });
-      
-      const COUPON_KEYWORDS_ML = ["desconto", "cupom", "voucher", "coupon", "promo", "ofertas", "oferta/list", "category"];
-      const allMlLinks = links.filter(l => l && (l.includes("mercadolivre.com") || l.includes("meli.com")));
-      const mlLinks = allMlLinks.filter(l => !COUPON_KEYWORDS_ML.some(kw => l.toLowerCase().includes(kw)));
-      
-      if (mlLinks.length > 0 && photoUrl) {
-         const { price, discountPct } = extractPriceAndDiscount(text);
-         const originalLink = mlLinks[0];
-         const cleanLink = await expandAndCleanUrl(originalLink);
-         
-         const affiliateId = process.env.MERCADO_LIVRE_AFFILIATE_ID || "";
-         const finalLink = cleanLink.includes("?") 
-            ? `${cleanLink}&affiliate_id=${affiliateId}` 
-            : `${cleanLink}?affiliate_id=${affiliateId}`;
-         
-         const lines = text.split('\n')
-           .map(l => l.trim())
-           .filter(l => l.length > 5) 
-           .filter(l => !l.includes("t.me") && !l.includes("http") && !l.includes("@")) 
-           .filter(l => !/R\$\s*[\d,.]+/.test(l)); 
-         
-         let title = lines.length > 0 ? lines[0] : "Oferta Mercado Livre";
-          
-          const msgId = $(el).attr("data-post") || String(Math.random());
-          
-          allProducts.push({
-            itemId: `ml_auto_${msgId}`,
-            productName: title,
-            price: price,
-            priceDiscountRate: discountPct,
-            isClone: false,
-            shopName: "Mercado Livre",
-            offerLink: finalLink,
-            imageUrl: photoUrl,
-            commissionRate: 100,
-            ratingStar: 5,
-            sales: 1000,
-            originalCaption: title
-          });
-      }
-    }
-    
-    allProducts.reverse();
-    const finalList = allProducts.slice(0, limit);
-    console.log(`✅ [ML Automático] ${finalList.length} ofertas virais mineradas!`);
-    return finalList;
-  } catch (error) {
-    console.error("Erro ao minerar ofertas do ML:", error.message);
-    return [];
-  }
+  // A API de buscas do Mercado Livre foi fechada para uso público.
+  // Como o usuário deseja clonar ESTRITAMENTE o canal que ele configurou,
+  // não usaremos mais canais de fallback escondidos aqui.
+  return [];
 }

@@ -285,77 +285,9 @@ export async function generateShopeeShortLink(originalUrl) {
  * Funciona como um "minerador" oculto pegando produtos virais de canais grandes.
  */
 export async function fetchShopeeAutoOffers({ limit = 10 } = {}) {
-  // Vamos usar um canal público grande de achadinhos para minerar ofertas automáticas
-  const targetChannel = "achadinhos_shopee"; 
-  const allProducts = [];
-  
-  try {
-    const url = `https://t.me/s/${targetChannel}`;
-    const response = await fetch(url);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    
-    const messages = $(".tgme_widget_message").toArray();
-    for (const el of messages) {
-      const htmlContent = $(el).find(".tgme_widget_message_text").html() || "";
-      const text = htmlContent.replace(/<br\s*[\/]?>/gi, "\n").replace(/<[^>]+>/g, "");
-      
-      const photoStyle = $(el).find(".tgme_widget_message_photo_wrap").attr("style") || "";
-      const match = photoStyle.match(/url\('(.*?)'\)/);
-      let photoUrl = match ? match[1] : null;
-      
-      const links = [];
-      $(el).find(".tgme_widget_message_text a").each((j, a) => {
-         links.push($(a).attr("href"));
-      });
-      
-      const allShopeeRaw = links.filter(l => l && (l.includes("shopee.com") || l.includes("shope.ee") || l.includes("s.shopee")));
-      const COUPON_KEYWORDS = ["voucher", "coupon", "cupom", "promo", "frete-gratis"];
-      const shopeeLinks = allShopeeRaw.filter(l => !COUPON_KEYWORDS.some(kw => l.toLowerCase().includes(kw)));
-      
-      if (shopeeLinks.length > 0 && photoUrl) {
-         const { price, discountPct } = extractPriceAndDiscount(text);
-         const originalLink = shopeeLinks[0];
-         
-         const expandedLink = await expandShopeeUrl(originalLink);
-         if (COUPON_KEYWORDS.some(kw => expandedLink.toLowerCase().includes(kw))) continue;
-         
-         const finalLink = await generateShopeeShortLink(expandedLink);
-         
-         const lines = text.split('\n')
-           .map(l => l.trim())
-           .filter(l => l.length > 5) 
-           .filter(l => !l.includes("t.me") && !l.includes("http") && !l.includes("@")) 
-           .filter(l => !/R\$\s*[\d,.]+/.test(l)); 
-         
-         let title = lines.length > 0 ? lines[0] : "Achadinho Viral Shopee";
-          
-          const msgId = $(el).attr("data-post") || String(Math.random());
-          
-          allProducts.push({
-            itemId: `shp_auto_${msgId}`,
-            productName: title,
-            price: price,
-            priceDiscountRate: discountPct,
-            isClone: false,
-            shopName: "Shopee",
-            offerLink: finalLink,
-            imageUrl: photoUrl,
-            commissionRate: 100,
-            ratingStar: 5,
-            sales: 1000,
-            originalCaption: title
-          });
-      }
-    }
-    
-    allProducts.reverse();
-    const finalList = allProducts.slice(0, limit);
-    console.log(`✅ [Shopee Automático] ${finalList.length} achadinhos virais minerados!`);
-    return finalList;
-  } catch (error) {
-    console.error("Erro ao minerar ofertas da Shopee:", error.message);
-    return [];
-  }
+  // A API GraphQL pública da Shopee para listar ofertas não funciona
+  // sem credenciais super restritas. Para respeitar 100% o canal de clone 
+  // escolhido pelo usuário, não faremos mineração oculta em canais de terceiros.
+  return [];
 }
 
