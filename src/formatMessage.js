@@ -14,7 +14,7 @@ function formatPrice(value) {
 }
 
 export function formatOfferMessage(product, globalCoupon = "") {
-  const {
+  let {
     productName,
     price,
     priceDiscountRate,
@@ -23,6 +23,17 @@ export function formatOfferMessage(product, globalCoupon = "") {
     sales,
     offerLink,
   } = product;
+
+  // Limpa o productName para garantir que não vai vazar o texto inteiro do concorrente
+  let cleanName = String(productName).replace(/<[^>]+>/g, '').replace(/https?:\/\/\S+/g, '').trim();
+  const parts = cleanName.split(/(?:🔥|✅|👉|❌|🚨|⚠️|\n)/).filter(p => p.trim().length > 5);
+  if (parts.length > 0) {
+      cleanName = parts[0].trim();
+  }
+  if (cleanName.length > 80) {
+      cleanName = cleanName.substring(0, 77) + '...';
+  }
+  productName = cleanName;
 
   let discountPct = Math.round(Number(priceDiscountRate || 0));
   
