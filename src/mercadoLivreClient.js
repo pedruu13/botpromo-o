@@ -38,35 +38,47 @@ async function expandAndCleanUrl(url) {
     let maxRedirects = 3;
     
     while(maxRedirects > 0) {
-      const response = await fetch(finalUrl, { redirect: "follow", headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } });
-      finalUrl = response.url;
+      const response = await fetch(finalUrl, { 
+        redirect: "manual", 
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+        } 
+      });
       
-      // Se ainda for um encurtador, tentamos ler o HTML pra achar um Meta Refresh
-      if (finalUrl.includes("/sec/") || finalUrl.includes("meli.com")) {
-        const text = await response.text();
-        const metaMatch = text.match(/url=['"]?([^'"]+)['"]?/i);
-        if (metaMatch && metaMatch[1] && metaMatch[1].startsWith("http")) {
-           finalUrl = metaMatch[1];
-           maxRedirects--;
-           continue;
-        }
+      // Se retornou um redirect 301/302, segue ele!
+      const location = response.headers.get('location');
+      if (location) {
+         finalUrl = location;
+         maxRedirects--;
+         continue;
+      }
+      
+      // Se não, lê o HTML pra ver se é Meta Refresh
+      const text = await response.text();
+      const metaMatch = text.match(/url=['"]?([^'"]+)['"]?/i);
+      if (metaMatch && metaMatch[1] && metaMatch[1].startsWith("http")) {
+         finalUrl = metaMatch[1];
+         maxRedirects--;
+         continue;
       }
       break;
     }
     
-    // 2. Remove as tags do concorrente (ex: matt_tool, etc)
+    // Remove as tags do concorrente (ex: matt_tool, etc)
     const urlObj = new URL(finalUrl);
-    urlObj.search = ""; // Limpa toda a query string
+    urlObj.search = ""; 
     
     return urlObj.toString();
-  } catch (error) {
-    console.error("Erro ao expandir URL:", error.message);
+  } catch (err) {
     return url;
   }
 }
 
 function extractPriceAndDiscount(text) {
-  const matches = [...text.matchAll(/R\$\s*([\d,.]+)/ig)];
+  const re = /(?<!\d\s*x\s*(?:de\s*)?)(?<!cupom\s*(?:de\s*)?)(?<!desconto\s*(?:de\s*)?)(?<!frete\s*(?:de\s*)?)R\$\s*([\d.,]+[\d])/ig;
+  const matches = [...text.matchAll(re)];
   const prices = matches.map(m => {
     const raw = m[1];
     let clean = raw;
@@ -81,19 +93,14 @@ function extractPriceAndDiscount(text) {
   let finalPrice = 0;
   let discountPct = 0;
 
-  if (prices.length >= 2) {
-    const price1 = prices[0];
-    const price2 = prices[1];
-    if (price1 > price2) {
-      finalPrice = price2;
-      discountPct = Math.round(((price1 - price2) / price1) * 100);
-    } else {
-      finalPrice = price1;
-      discountPct = 0;
+  if (prices.length > 0) {
+    prices.sort((a, b) => b - a); // decrescente (maior primeiro)
+    const originalPrice = prices[0];
+    finalPrice = prices[prices.length - 1]; // o menor preço é o de venda
+    
+    if (originalPrice > finalPrice) {
+      discountPct = Math.round(((originalPrice - finalPrice) / originalPrice) * 100);
     }
-  } else if (prices.length === 1) {
-    finalPrice = prices[0];
-    discountPct = 0;
   }
 
   return { price: finalPrice, discountPct };

@@ -11,7 +11,14 @@ const { SHOPEE_APP_ID, SHOPEE_APP_SECRET, SHOPEE_API_URL } = process.env;
  */
 export async function expandShopeeUrl(url) {
   try {
-    const res = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } });
+    const res = await fetch(url, { 
+      redirect: 'follow', 
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+      } 
+    });
     const finalUrl = res.url;
     if (finalUrl && finalUrl.includes('shopee')) {
        const urlObj = new URL(finalUrl);
@@ -60,7 +67,8 @@ async function shopeeGraphQL(query, variables = {}) {
 }
 
 function extractPriceAndDiscount(text) {
-  const matches = [...text.matchAll(/R\$\s*([\d,.]+)/ig)];
+  const re = /(?<!\d\s*x\s*(?:de\s*)?)(?<!cupom\s*(?:de\s*)?)(?<!desconto\s*(?:de\s*)?)(?<!frete\s*(?:de\s*)?)R\$\s*([\d.,]+[\d])/ig;
+  const matches = [...text.matchAll(re)];
   const prices = matches.map(m => {
     const raw = m[1];
     let clean = raw;
@@ -75,19 +83,14 @@ function extractPriceAndDiscount(text) {
   let finalPrice = 0;
   let discountPct = 0;
 
-  if (prices.length >= 2) {
-    const price1 = prices[0];
-    const price2 = prices[1];
-    if (price1 > price2) {
-      finalPrice = price2;
-      discountPct = Math.round(((price1 - price2) / price1) * 100);
-    } else {
-      finalPrice = price1;
-      discountPct = 0;
+  if (prices.length > 0) {
+    prices.sort((a, b) => b - a);
+    const originalPrice = prices[0];
+    finalPrice = prices[prices.length - 1];
+    
+    if (originalPrice > finalPrice) {
+      discountPct = Math.round(((originalPrice - finalPrice) / originalPrice) * 100);
     }
-  } else if (prices.length === 1) {
-    finalPrice = prices[0];
-    discountPct = 0;
   }
 
   return { price: finalPrice, discountPct };
