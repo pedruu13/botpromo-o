@@ -91,30 +91,42 @@ function buildMlAffiliateLink(cleanLink, affiliateId) {
 }
 
 function extractPriceAndDiscount(text) {
-  const re = /(?<!\d\s*x\s*(?:de\s*)?)(?<!cupom\s*(?:de\s*)?)(?<!desconto\s*(?:de\s*)?)(?<!frete\s*(?:de\s*)?)R\$\s*([\d.,]+[\d])/ig;
-  const matches = [...text.matchAll(re)];
-  const prices = matches.map(m => {
-    const raw = m[1];
-    let clean = raw;
-    if (raw.includes(",") && raw.includes(".")) {
-      clean = raw.replace(/\./g, "").replace(",", ".");
-    } else if (raw.includes(",")) {
-      clean = raw.replace(",", ".");
-    }
-    return parseFloat(clean);
-  }).filter(p => !isNaN(p) && p > 0);
+  // Remove linhas de parcelas (ex: "12x de R$ 10,00") para não confundir com preço real
+  const cleanText = text
+    .split("\n")
+    .filter(line => !/\d+\s*x\s*(de\s*)?R\$/i.test(line))
+    .filter(line => !/frete\s*(gr[áa]tis|de)\s*R\$/i.test(line))
+    .join("\n");
+
+  const matches = [...cleanText.matchAll(/R\$\s*([\d.,]+)/gi)];
+  const prices = matches
+    .map(m => {
+      const raw = m[1];
+      let clean = raw;
+      if (raw.includes(",") && raw.includes(".")) {
+        clean = raw.replace(/\./g, "").replace(",", ".");
+      } else if (raw.includes(",")) {
+        clean = raw.replace(",", ".");
+      }
+      return parseFloat(clean);
+    })
+    .filter(p => !isNaN(p) && p >= 5); // ignora valores absurdos abaixo de R$5
 
   let finalPrice = 0;
   let discountPct = 0;
 
-  if (prices.length > 0) {
-    prices.sort((a, b) => b - a); // decrescente (maior primeiro)
-    const originalPrice = prices[0];
-    finalPrice = prices[prices.length - 1]; // o menor preço é o de venda
-    
-    if (originalPrice > finalPrice) {
-      discountPct = Math.round(((originalPrice - finalPrice) / originalPrice) * 100);
+  if (prices.length >= 2) {
+    const maxPrice = Math.max(...prices);
+    const minPrice = Math.min(...prices);
+    // Só considera desconto se a diferença for > 5%
+    if (maxPrice > minPrice && ((maxPrice - minPrice) / maxPrice) > 0.05) {
+      finalPrice = minPrice;
+      discountPct = Math.round(((maxPrice - minPrice) / maxPrice) * 100);
+    } else {
+      finalPrice = minPrice;
     }
+  } else if (prices.length === 1) {
+    finalPrice = prices[0];
   }
 
   return { price: finalPrice, discountPct };
@@ -241,8 +253,47 @@ export async function fetchMercadoLivreCloneOffers({ limit = 20 } = {}) {
 
 
 export async function fetchMercadoLivreAutoOffers({ limit = 10 } = {}) {
-  // A API de buscas do Mercado Livre foi fechada para uso público.
-  // Como o usuário deseja clonar ESTRITAMENTE o canal que ele configurou,
-  // não usaremos mais canais de fallback escondidos aqui.
-  return [];
+  if (!MERCADO_LIVRE_AFFILIATE_ID) {
+    console.log("[ML Auto] MERCADO_LIVRE_AFFILIATE_ID não configurado. Pulando mineração automática.");
+    return [];
+  }
+  try {
+    const url = "https://api.mercadolibre.com/sites/MLB/search?deal_of_the_day=true&limit=50";
+    const response = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    const data = await response.json();
+    if (!data.results || data.results.length === 0) return [];
+
+    const products = data.results
+      .filter(item => item.thumbnail && item.permalink)
+      .map(item => {
+        const salePrice = item.price;
+        const originalPrice = item.original_price || salePrice;
+        let discountRate = 0;
+        if (originalPrice > salePrice) {
+          discountRate = Math.round(((originalPrice - salePrice) / originalPrice) * 100);
+        }
+        const affiliateLink = buildMlAffiliateLink(item.permalink, MERCADO_LIVRE_AFFILIATE_ID);
+        const imageUrl = item.thumbnail.replace("-I.jpg", "-O.jpg");
+        return {
+          itemId: "auto_ml_" + item.id,
+          productName: item.title,
+          price: salePrice,
+          priceDiscountRate: discountRate,
+          shopName: "Mercado Livre",
+          offerLink: affiliateLink,
+          imageUrl,
+          commissionRate: 100,
+          ratingStar: 5,
+          sales: 1000,
+          discountPct: discountRate
+        };
+      });
+
+    const finalList = products.slice(0, limit);
+    console.log(`🔍 [ML Auto] ${finalList.length} ofertas mineradas da API do Mercado Livre`);
+    return finalList;
+  } catch (error) {
+    console.error("Erro no ML Automático:", error.message);
+    return [];
+  }
 }
