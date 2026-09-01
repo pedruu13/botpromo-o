@@ -254,21 +254,26 @@ export async function fetchShopeeConversions() {
 export async function generateShopeeShortLink(originalUrl) {
   const { SHOPEE_APP_ID, SHOPEE_APP_SECRET } = process.env;
 
-  // Helper: remove parâmetros de afiliado do concorrente e retorna URL limpa
+  // Remove TODOS os parâmetros de rastreamento do concorrente
   function cleanCompetitorParams(url) {
     try {
       const urlObj = new URL(url);
-      ["mmp_pid","utm_source","utm_medium","utm_campaign","utm_content","utm_term",
-       "sp_atk","xptdk","uls_trackid","gads_t_sig","extraParams"].forEach(p => urlObj.searchParams.delete(p));
+      // Lista completa de parâmetros de afiliado/rastreamento de terceiros
+      [
+        "mmp_pid", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+        "sp_atk", "xptdk", "uls_trackid", "gads_t_sig", "extraParams",
+        "af_siteid", "af_sub1", "af_sub2", "af_sub3", "pid", "c",
+        "clickid", "aff_id", "aff_sub", "offer_id", "source"
+      ].forEach(p => urlObj.searchParams.delete(p));
       return urlObj.toString();
     } catch {
       return url;
     }
   }
 
-  // Se não tem credenciais da API Shopee, retorna link limpo (sem afiliado do concorrente)
   if (!SHOPEE_APP_ID || !SHOPEE_APP_SECRET) {
-    console.log("[Shopee] Sem credenciais da API, usando link limpo sem afiliado do concorrente.");
+    console.warn("⚠️ [Shopee] SHOPEE_APP_ID ou SHOPEE_APP_SECRET não configurados no .env!");
+    console.warn("⚠️ [Shopee] O link será enviado SEM afiliado. Configure as credenciais para ganhar comissão.");
     return cleanCompetitorParams(originalUrl);
   }
 
@@ -282,10 +287,17 @@ export async function generateShopeeShortLink(originalUrl) {
 
   try {
     const data = await shopeeGraphQL(query, { originUrl: originalUrl });
-    return data?.generateShortLink?.shortLink || cleanCompetitorParams(originalUrl);
+    const shortLink = data?.generateShortLink?.shortLink;
+    if (shortLink) {
+      console.log(`✅ [Shopee Afiliado] Link gerado com sucesso: ${shortLink}`);
+      return shortLink;
+    }
+    // API retornou mas sem shortLink — produto não elegível
+    console.warn(`⚠️ [Shopee] API não gerou shortlink para: ${originalUrl} — produto pode não ser elegível para afiliado.`);
+    return cleanCompetitorParams(originalUrl);
   } catch (error) {
-    console.error("Erro ao gerar shortlink da Shopee:", error.message);
-    // Fallback: link limpo sem parâmetros do concorrente
+    console.error(`❌ [Shopee] Erro ao gerar shortlink: ${error.message}`);
+    console.warn(`⚠️ [Shopee] Usando link limpo SEM afiliado como fallback.`);
     return cleanCompetitorParams(originalUrl);
   }
 }
