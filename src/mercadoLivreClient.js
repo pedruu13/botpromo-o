@@ -35,7 +35,7 @@ import { loadSettings } from "./configStore.js";
 async function expandAndCleanUrl(url) {
   try {
     let finalUrl = url;
-    let maxRedirects = 3;
+    let maxRedirects = 5;
     
     while(maxRedirects > 0) {
       const response = await fetch(finalUrl, { 
@@ -47,7 +47,6 @@ async function expandAndCleanUrl(url) {
         } 
       });
       
-      // Se retornou um redirect 301/302, segue ele!
       const location = response.headers.get('location');
       if (location) {
          finalUrl = location;
@@ -55,7 +54,6 @@ async function expandAndCleanUrl(url) {
          continue;
       }
       
-      // Se não, lê o HTML pra ver se é Meta Refresh
       const text = await response.text();
       const metaMatch = text.match(/url=['"]?([^'"]+)['"]?/i);
       if (metaMatch && metaMatch[1] && metaMatch[1].startsWith("http")) {
@@ -66,14 +64,30 @@ async function expandAndCleanUrl(url) {
       break;
     }
     
-    // Remove as tags do concorrente (ex: matt_tool, etc)
+    // Remove SOMENTE parâmetros de afiliado do concorrente, mantém parâmetros legítimos
+    const AFFILIATE_PARAMS = ["matt_tool", "deal_print_id", "deal_id", "position", "tracking_id", "ref", "affId", "utm_source", "utm_medium", "utm_campaign"];
     const urlObj = new URL(finalUrl);
-    urlObj.search = ""; 
+    AFFILIATE_PARAMS.forEach(p => urlObj.searchParams.delete(p));
     
     return urlObj.toString();
   } catch (err) {
+    console.error("Erro ao expandir URL do ML:", err.message);
     return url;
   }
+}
+
+function buildMlAffiliateLink(cleanLink, affiliateId) {
+  // O Mercado Livre usa o parâmetro 'matt_tool' para identificar afiliados
+  // Se o affiliateId já vier no formato "matt_tool=SEU_ID", extraímos só o valor
+  // Se vier só o valor "SEU_ID", usamos diretamente
+  let toolValue = affiliateId;
+  if (affiliateId.includes("=")) {
+    // ex: "matt_tool=ABC123" → pega "ABC123"
+    toolValue = affiliateId.split("=").pop();
+  }
+  const urlObj = new URL(cleanLink);
+  urlObj.searchParams.set("matt_tool", toolValue);
+  return urlObj.toString();
 }
 
 function extractPriceAndDiscount(text) {
@@ -158,10 +172,8 @@ export async function fetchMercadoLivreCloneOffers({ limit = 20 } = {}) {
              const originalLink = mlLinks[0];
              const cleanLink = await expandAndCleanUrl(originalLink);
              
-             // Aplica o SEU afiliado no link limpo (formato correto: affiliate_id=SEU_ID)
-             const finalLink = cleanLink.includes("?") 
-                ? `${cleanLink}&affiliate_id=${affiliateId}` 
-                : `${cleanLink}?affiliate_id=${affiliateId}`;
+             // Aplica o SEU afiliado no padrão oficial do ML (matt_tool=SEU_ID)
+             const finalLink = buildMlAffiliateLink(cleanLink, affiliateId);
              
              // Pega as linhas, remove as que são links (t.me, http), menções (@), preços e emojis puros
              const lines = text.split('\n')
