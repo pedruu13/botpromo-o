@@ -106,7 +106,19 @@ async function runCycle() {
       const coupon = settings.globalCoupon ||
         (product.shopName === "Shopee" ? settings.shopeeCoupon : "") ||
         (product.shopName === "Mercado Livre" ? settings.mlCoupon : "");
-      let caption = formatOfferMessage(product, coupon);
+
+      // Se o produto veio de clonagem e tem a legenda original, usa ela (preço e texto corretos)
+      // Caso contrário, gera a mensagem formatada normalmente
+      let caption;
+      if (product.originalCaption && product.originalCaption.trim().length > 10) {
+        caption = product.originalCaption;
+        // Adiciona o cupom no final se houver
+        if (coupon) {
+          caption += `\n\n🎟️ <b>Use o cupom:</b> <code>${coupon}</code>`;
+        }
+      } else {
+        caption = formatOfferMessage(product, coupon);
+      }
 
       await sendPhotoMessage({ imageUrl: product.imageUrl, caption });
       
