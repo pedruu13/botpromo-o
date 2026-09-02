@@ -193,7 +193,10 @@ export async function fetchProductOffers({ limit = 20 } = {}) {
             originalCaption = originalCaption.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
             originalCaption = originalCaption.split(originalLink).join(finalLink);
             
-            const msgId = $(el).attr("data-post") || String(Math.random());
+            // ID estável: usa data-post do Telegram ou hash do link do produto
+            // NUNCA usar Math.random() — o mesmo produto teria ID diferente a cada ciclo
+            const msgId = $(el).attr("data-post") || 
+              finalLink.replace(/[^a-zA-Z0-9]/g, "").slice(-30);
             
             products.push({
               itemId: `shp_${msgId}`,

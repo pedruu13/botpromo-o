@@ -216,7 +216,8 @@ export async function fetchMercadoLivreCloneOffers({ limit = 20 } = {}) {
              originalCaption = originalCaption.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
              originalCaption = originalCaption.split(originalLink).join(finalLink);
 
-             const msgId = $(el).attr("data-post") || String(Math.random());
+             const msgId = $(el).attr("data-post") || 
+               finalLink.replace(/[^a-zA-Z0-9]/g, "").slice(-30);
              
              products.push({
                itemId: `ml_${msgId}`,

@@ -111,8 +111,14 @@ async function runCycle() {
       // Caso contrário, gera a mensagem formatada normalmente
       let caption;
       if (product.originalCaption && product.originalCaption.trim().length > 10) {
-        caption = product.originalCaption;
-        // Adiciona o cupom no final se houver
+        // Monta um cabeçalho chamativo e usa o texto original do canal (preço e info reais)
+        const shopEmoji = product.shopName === "Mercado Livre" ? "🛒" : "🛍️";
+        const discountHeader = product.priceDiscountRate > 0
+          ? `⚡ <b>${Math.round(product.priceDiscountRate)}% DE DESCONTO!</b> ⚡`
+          : `🚨 <b>OFERTA DISPONÍVEL!</b> 🚨`;
+
+        caption = `${shopEmoji} ${discountHeader}\n\n${product.originalCaption}`;
+
         if (coupon) {
           caption += `\n\n🎟️ <b>Use o cupom:</b> <code>${coupon}</code>`;
         }
